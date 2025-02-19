@@ -34,7 +34,15 @@ sudo cmake --build build --target install -j
 cd ..
 
 ##############################
-# build
+# build BLAKE3 x86 架构
+git clone https://github.com/BLAKE3-team/BLAKE3.git
+cd ./BLAKE3/c
+gcc -shared -O3 -o libblake3.so blake3.c blake3_dispatch.c blake3_portable.c \
+    blake3_sse2_x86-64_unix.S blake3_sse41_x86-64_unix.S blake3_avx2_x86-64_unix.S \
+    blake3_avx512_x86-64_unix.S
+
+##############################
+# build FPSI
 mkdir -p ./out/build && cd ./out/build
 cmake ../..
 make -j

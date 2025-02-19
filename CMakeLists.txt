@@ -22,7 +22,7 @@ target_link_libraries(main oc::libOTe)
 # ############################################
 # Link  Myblake3                 #
 # ############################################
-# target_link_libraries(main ${CMAKE_SOURCE_DIR}/BLAKE3/libblake3.so)
+target_link_libraries(main ${CMAKE_SOURCE_DIR}/BLAKE3/c/libblake3.so)
 
 # ############################################
 # Link  IPCL                     #
