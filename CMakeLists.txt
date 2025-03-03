@@ -15,7 +15,7 @@ set(CMAKE_BUILD_TYPE Release)
 # ############################################
 # Link  libOTe                   #
 # ############################################
-find_package(libOTe REQUIRED HINTS "./libOTe")
+find_package(libOTe REQUIRED HINTS "${CMAKE_SOURCE_DIR}/libOTe")
 
 target_link_libraries(main oc::libOTe)
 
@@ -27,7 +27,7 @@ target_link_libraries(main ${CMAKE_SOURCE_DIR}/BLAKE3/c/libblake3.so)
 # ############################################
 # Link  IPCL                     #
 # ############################################
-set(IPCL_DIR "./out/install/lib/cmake/ipcl-2.0.0/")
+set(IPCL_DIR "${CMAKE_SOURCE_DIR}/out/install/lib/cmake/ipcl-2.0.0/")
 
 find_package(IPCL 2.0.0
     HINTS

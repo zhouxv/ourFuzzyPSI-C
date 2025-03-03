@@ -3,8 +3,10 @@
 
 # User-specific files
 .vscode
+.cache
 
 out
+build
 
 # 依赖库
 libOTe

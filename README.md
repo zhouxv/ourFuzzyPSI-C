@@ -1,9 +1,7 @@
 
-### Environment
+## Environment
 
 This code and following instructions are tested on Ubuntu 20.04, with `g++ 13.1.0, CMake 3.30.5, GNU Make 4.2.1`.
-
-## Build step by step
 
 ### Install dependencies
 
@@ -40,6 +38,7 @@ cd ./BLAKE3/c
 gcc -shared -O3 -o libblake3.so blake3.c blake3_dispatch.c blake3_portable.c \
     blake3_sse2_x86-64_unix.S blake3_sse41_x86-64_unix.S blake3_avx2_x86-64_unix.S \
     blake3_avx512_x86-64_unix.S
+cd ../../
 
 ##############################
 # build FPSI
