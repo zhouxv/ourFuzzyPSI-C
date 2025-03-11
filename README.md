@@ -43,6 +43,12 @@ cd ../../
 ##############################
 # build FPSI
 mkdir -p ./out/build && cd ./out/build
+cmake -DCMAKE_BUILD_TYPE=Debug ../..
+cmake -DCMAKE_BUILD_TYPE=Release ../..
 cmake ../..
 make -j
+
+./main -p -m 0 -d 2 -r 8 -s 8 -i 3 -delta 16
+gdb --args ./main -p -m 0 -d 2 -r 4 -s 4 -i 3 -delta 16
+valgrind ./main -p -m 0 -d 2 -r 8 -s 8 -i 3 -delta 16
 ```

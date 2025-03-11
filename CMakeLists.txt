@@ -1,14 +1,25 @@
 cmake_minimum_required(VERSION 3.22)
 project(ourFPSI)
 
+include_directories(BLAKE3/c/)
+include_directories(fpsi)
 include_directories(frontend)
+
 file(GLOB_RECURSE SRCS
     frontend/*.cpp
+    fpsi/*.cpp
 )
 
 add_executable(main ${SRCS})
 
-target_compile_options(main PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-std=c++20> -lpthread -O2)
+if(CMAKE_BUILD_TYPE MATCHES "Debug")
+    target_compile_options(main PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-std=c++20> -lpthread -O2 -fsanitize=address)
+    target_link_options(main PUBLIC -fsanitize=address)
+endif()
+
+if(CMAKE_BUILD_TYPE MATCHES "Release")
+    target_compile_options(main PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-std=c++20> -lpthread -O2)
+endif()
 
 set(CMAKE_BUILD_TYPE Release)
 
