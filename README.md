@@ -9,9 +9,12 @@ This code and following instructions are tested on Ubuntu 20.04, with `g++ 13.1.
 ##############################
 # install gmp
 sudo apt install libgmp-dev
+# install spdlog
+sudo apt install libspdlog-dev
 
 ##############################
 # install libOTe
+cd thirdparty
 git clone https://github.com/osu-crypto/libOTe.git
 cd libOTe
 python3 build.py --all --boost --sodium

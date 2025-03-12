@@ -9,6 +9,7 @@ out
 build
 
 # 依赖库
+thirdparty/*
 libOTe
 pailliercryptolib
 BLAKE3

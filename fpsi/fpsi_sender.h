@@ -44,4 +44,33 @@ public:
   void msg_low();
   void msg_low_inf();
   void msg_low_lp();
+
+  // 计时器
+  std::vector<std::pair<string, double>> timers;
+  void print_time() {
+    for (auto &x : timers) {
+      cout << x.first << ": " << x.second << "ms; " << x.second / 1000 << "s"
+           << endl;
+    }
+  }
+  void insert_timer(simpleTimer &t) {
+    auto other = t.output();
+    for (auto tmp : other) {
+      timers.push_back(tmp);
+    }
+  }
+
+  // 通信计数
+  std::vector<std::pair<string, u64>> commus;
+  void print_commus() {
+    for (auto &x : commus) {
+      cout << x.first << ": " << x.second << " 字节; " << x.second / 1024
+           << " KB; " << x.second / 1024 / 1024 << " MB" << endl;
+    }
+  }
+
+  void insert_commus(const string &msg, u64 socket_index) {
+    commus.push_back({msg, sockets[socket_index].bytesSent()});
+    sockets[socket_index].mImpl->mBytesSent = 0;
+  }
 };

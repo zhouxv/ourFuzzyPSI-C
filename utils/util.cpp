@@ -44,10 +44,10 @@ void sample_points(u64 dim, u64 delta, u64 send_size, u64 recv_size,
 ///
 /// # 返回
 /// 返回一个 Point 类型的值，表示点 p 在网格中的单元格坐标。
-pt cell(const pt &p, u64 dim, u64 sidelen) {
+pt cell(const pt &p, u64 dim, u64 side_len) {
   pt bot_left_corner(dim, 0); // 初始化为0
   for (u64 i = 0; i < dim; ++i) {
-    bot_left_corner[i] = p[i] / sidelen; // 计算单元格坐标
+    bot_left_corner[i] = p[i] / side_len; // 计算单元格坐标
   }
   return bot_left_corner; // 返回结果
 }
@@ -259,7 +259,7 @@ vector<u64> sum_combinations(const oc::span<u32> &results, u64 dim) {
     sums[i] = current_sum;
   }
 
-  // LOG_DEBUG("results.size()" << results.size() << "sums.size() "
+  // spdlog::info("results.size()" << results.size() << "sums.size() "
   //                            << sums.size());
 
   return sums;

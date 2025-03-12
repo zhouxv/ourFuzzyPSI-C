@@ -1,13 +1,18 @@
-#include "fpsi_sender.h"
-#include "rb_okvs.h"
-#include "set_dec.h"
-#include "util.h"
+
+
+#include <spdlog/spdlog.h>
+#include <vector>
+
 #include <cryptoTools/Common/Defines.h>
 #include <cryptoTools/Common/block.h>
 #include <cryptoTools/Crypto/PRNG.h>
 #include <ipcl/bignum.h>
 #include <ipcl/ciphertext.hpp>
-#include <vector>
+
+#include "fpsi_sender.h"
+#include "rb_okvs.h"
+#include "set_dec.h"
+#include "util.h"
 
 void FPSISender::init() { (METRIC == 0) ? init_inf() : init_lp(); }
 
@@ -25,7 +30,7 @@ void FPSISender::init_inf() {
     random_values[i] = prng.get<u32>() / 2;
   }
 
-  LOG_DEBUG("计算随机数完成");
+  spdlog::info("sender 计算随机数完成");
 
   vector<u64> random_sum(pt_num, 0);
 
@@ -36,11 +41,6 @@ void FPSISender::init_inf() {
     }
   }
 
-  for (auto sum : random_sum) {
-    cout << sum << " ";
-  }
-  cout << endl;
-
   // 计算随机数和的哈希
   blake3_hasher hasher;
   block hash_out;
@@ -49,7 +49,7 @@ void FPSISender::init_inf() {
     blake3_hasher_init(&hasher);
     blake3_hasher_update(&hasher, &random_sum[i], sizeof(u64));
     blake3_hasher_finalize(&hasher, hash_out.data(), 16);
-    random_hashes[i] = hash_out;
+    random_hashes.push_back(hash_out);
   }
 
   ipcl::PlainText pt_randoms = ipcl::PlainText(random_values);
@@ -75,9 +75,22 @@ void FPSISender::msg_low_inf() {
   coproto::sync_wait(sockets[0].flush());
   coproto::sync_wait(sockets[0].recv(mN));
   coproto::sync_wait(sockets[0].recv(mSize));
+
+  /*--------------------------------------------------------------------------------------------------------------------------------*/
+  // blake3 hash 发送
+  /*--------------------------------------------------------------------------------------------------------------------------------*/
+  // 发送随机数和的 hash
+  coproto::sync_wait(sockets[0].flush());
+  coproto::sync_wait(sockets[0].send(random_hashes));
+  insert_commus("sender_0_hashes", 0);
+  spdlog::info("sender 哈希发送完成");
+
   std::vector<std::vector<block>> encoding(
       mSize, vector<block>(PAILLIER_CIPHER_SIZE_IN_BLOCK));
 
+  /*--------------------------------------------------------------------------------------------------------------------------------*/
+  // OKVS Encoding 的接收
+  /*--------------------------------------------------------------------------------------------------------------------------------*/
   // okvs encoding 接收线程设置
   u64 encoding_com_batch_size = mSize / THREAD_NUM;
   vector<thread> encoding_com_threads;
@@ -93,8 +106,8 @@ void FPSISender::msg_low_inf() {
       coproto::sync_wait(sockets[thread_index].recvResize(encoding[i]));
     }
 
-    LOG_DEBUG("sender thread_index " << thread_index
-                                     << " okvs encoding 接收完成");
+    spdlog::info("sender thread_index {0} : okvs encoding 接收完成",
+                 thread_index);
   };
 
   // 启动okvs encoding接收线程
@@ -107,9 +120,6 @@ void FPSISender::msg_low_inf() {
     th.join();
   }
 
-  // LOG_DEBUG("okvs mN: " << mN << ", okvs size: " << mSize
-  //                       << ", encoding size: " << encoding.size() << endl);
-
   // 多线程解码设置
   auto mu = param.first.size();
   u64 pts_batch_size = pt_num / THREAD_NUM;
@@ -117,6 +127,11 @@ void FPSISender::msg_low_inf() {
 
   // 多线程实现解码
   auto worker = [&](u64 thread_index) {
+    simpleTimer timer;
+
+    /*--------------------------------------------------------------------------------------------------------------------------------*/
+    // OKVS decode
+    /*--------------------------------------------------------------------------------------------------------------------------------*/
     RBOKVS rb_okvs;
     rb_okvs.init(mN, OKVS_EPSILON, OKVS_LAMBDA, OKVS_SEED);
 
@@ -128,10 +143,12 @@ void FPSISender::msg_low_inf() {
     u64 index = 0;
 
     vector<BigNumber> decode_ciphers;
-    vector<BigNumber> random_ciphers;
+    vector<BigNumber> random_ciphers_copy;
     decode_ciphers.reserve(pts_count * DIM * mu);
-    random_ciphers.reserve(pts_count * DIM * mu);
+    random_ciphers_copy.reserve(pts_count * DIM * mu);
 
+    // decode
+    timer.start();
     for (u64 i = pt_start; i < pt_end; i++) {
       pt blk = cell(pts[i], DIM, SIDE_LEN);
 
@@ -144,32 +161,36 @@ void FPSISender::msg_low_inf() {
               rb_okvs.decode(encoding, key, PAILLIER_CIPHER_SIZE_IN_BLOCK);
 
           decode_ciphers.push_back(block_vector_to_bignumer(decode));
-          random_ciphers.push_back(random_ciphers[i * DIM + j]);
+          random_ciphers_copy.push_back(random_ciphers[i * DIM + j]);
         }
       }
       index++;
     }
+    timer.end(std::format("send_{}_okvs_decode", thread_index));
+    spdlog::info("sender thread_index {0} : okvs 解码完成", thread_index);
 
-    LOG_DEBUG("sender thread_index " << thread_index << " 解码完成");
-
+    /*--------------------------------------------------------------------------------------------------------------------------------*/
+    // getValue
+    /*--------------------------------------------------------------------------------------------------------------------------------*/
     ipcl::initializeContext("QAT");
     ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
+    timer.start();
+    // decode + random
     auto results = ipcl::CipherText(pk, decode_ciphers) +
-                   ipcl::CipherText(pk, random_ciphers);
-    ipcl::terminateContext();
-
-    LOG_DEBUG("sender thread_index " << thread_index << " sender 加密完成");
+                   ipcl::CipherText(pk, random_ciphers_copy);
+    timer.end(std::format("send_{}_get_value", thread_index));
+    spdlog::info("sender thread_index {0} : 加密完成", thread_index);
 
     coproto::sync_wait(sockets[thread_index].flush());
     for (u64 i = 0; i < pts_count * DIM * mu; i++) {
       coproto::sync_wait(sockets[thread_index].send(
           bignumer_to_block_vector(results.getElement(i))));
     }
-    LOG_DEBUG("sender thread_index " << thread_index << " sender 密文发送完成");
+    insert_commus(std::format("send_{}_ciphers", thread_index), thread_index);
+    spdlog::info("sender thread_index {0} : 密文发送完成", thread_index);
 
-    coproto::sync_wait(sockets[thread_index].send(
-        oc::span<block>(random_hashes.data() + pt_start, pts_count)));
-    LOG_DEBUG("sender thread_index " << thread_index << " sender 哈希发送完成");
+    insert_timer(timer);
+    ipcl::terminateContext();
   };
 
   // 启动线程

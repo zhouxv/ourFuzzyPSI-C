@@ -2,12 +2,14 @@ cmake_minimum_required(VERSION 3.22)
 project(ourFPSI)
 
 include_directories(BLAKE3/c/)
+include_directories(utils)
 include_directories(fpsi)
 include_directories(frontend)
 
 file(GLOB_RECURSE SRCS
     frontend/*.cpp
     fpsi/*.cpp
+    utils/*.cpp
 )
 
 add_executable(main ${SRCS})

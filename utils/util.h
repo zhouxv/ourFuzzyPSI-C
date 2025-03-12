@@ -4,14 +4,38 @@
 #include "params_selects.h"
 #include <cryptoTools/Common/Defines.h>
 #include <cryptoTools/Crypto/PRNG.h>
-#include <iostream>
+#include <utility>
 #include <vector>
-
-// 在 Debug 模式下启用日志
-#define LOG_DEBUG(msg) std::cout << "DEBUG: " << msg << "\n";
 
 using namespace oc;
 using namespace std;
+
+// 简易计时器
+typedef std::chrono::high_resolution_clock::time_point tVar;
+#define tNow() std::chrono::high_resolution_clock::now()
+#define tStart(t) t = tNow()
+#define tEnd(t)                                                                \
+  std::chrono::duration_cast<std::chrono::milliseconds>(tNow() - t).count()
+
+class simpleTimer {
+public:
+  tVar t;
+  std::vector<std::pair<string, double>> timers;
+
+  simpleTimer() {}
+
+  void start() { tStart(t); }
+  void end(string msg) { timers.push_back({msg, tEnd(t)}); }
+
+  void print() {
+    for (auto &x : timers) {
+      cout << x.first << ": " << x.second << "ms; " << x.second / 1000 << "s"
+           << endl;
+    }
+  }
+
+  std::vector<std::pair<string, double>> output() { return timers; }
+};
 
 // 点的别名
 using pt = vector<u64>;
@@ -26,7 +50,7 @@ void sample_points(u64 dim, u64 delta, u64 sender_size, u64 recv_size,
                    u64 intersection_size, vector<pt> &sender_pts,
                    vector<pt> &recv_pts);
 
-pt cell(const pt &p, u64 dim, u64 sidelen);
+pt cell(const pt &p, u64 dim, u64 side_len);
 pt block_(const pt &p, u64 dim, u64 delta, u64 sidelen);
 
 u64 l1_dist(const pt &p1, const pt &p2, u64 dim);
