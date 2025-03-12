@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 project(ourFPSI)
 
-include_directories(BLAKE3/c/)
+include_directories(thirdparty/BLAKE3/c/)
 include_directories(utils)
 include_directories(fpsi)
 include_directories(frontend)
@@ -28,14 +28,14 @@ set(CMAKE_BUILD_TYPE Release)
 # ############################################
 # Link  libOTe                   #
 # ############################################
-find_package(libOTe REQUIRED HINTS "${CMAKE_SOURCE_DIR}/libOTe")
+find_package(libOTe REQUIRED HINTS "${CMAKE_SOURCE_DIR}/thirdparty/libOTe")
 
 target_link_libraries(main oc::libOTe)
 
 # ############################################
 # Link  Myblake3                 #
 # ############################################
-target_link_libraries(main ${CMAKE_SOURCE_DIR}/BLAKE3/c/libblake3.so)
+target_link_libraries(main ${CMAKE_SOURCE_DIR}/thirdparty/BLAKE3/c/libblake3.so)
 
 # ############################################
 # Link  IPCL                     #
