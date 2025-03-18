@@ -17,7 +17,7 @@ void run_low_dimension(const CLP &cmd) {
   const u64 recv_size = 1ull << cmd.getOr("r", 8);
   const u64 send_size = 1ull << cmd.getOr("s", 8);
   const u64 intersection_size = cmd.getOr("i", 32);
-  const u64 THREAD_NUM = cmd.getOr("th", 1);
+  // const u64 THREAD_NUM = cmd.getOr("th", 1);
 
   if ((intersection_size > recv_size) | (intersection_size > send_size)) {
     spdlog::error("intersection_size should not be greater than set_size");
@@ -34,7 +34,7 @@ void run_low_dimension(const CLP &cmd) {
   spdlog::info("recv_set_size     : {}", recv_size);
   spdlog::info("send_set_size     : {}", send_size);
   spdlog::info("intersection_size : {}", intersection_size);
-  spdlog::info("thread_num        : {}", THREAD_NUM);
+  // spdlog::info("thread_num        : {}", THREAD_NUM);
   spdlog::info("********************* offline start ************************");
 
   vector<pt> recv_pts(recv_size, vector<u64>(DIM, 0));
@@ -54,7 +54,7 @@ void run_low_dimension(const CLP &cmd) {
 
   // 本地网络通信初始化
   vector<coproto::LocalAsyncSocket> socketPair0, socketPair1;
-  for (u64 i = 0; i < THREAD_NUM; ++i) {
+  for (u64 i = 0; i < 1; ++i) {
     auto socketPair = coproto::LocalAsyncSocket::makePair();
     socketPair0.push_back(socketPair[0]);
     socketPair1.push_back(socketPair[1]);
@@ -62,9 +62,9 @@ void run_low_dimension(const CLP &cmd) {
   spdlog::info("双方网络初始化完成");
 
   // 接收方和发送方初始化
-  FPSIRecv recv(DIM, DELTA, recv_size, METRIC, THREAD_NUM, recv_pts,
+  FPSIRecv recv(DIM, DELTA, recv_size, METRIC, 1, recv_pts,
                 paillier_key.pub_key, paillier_key.priv_key, socketPair0);
-  FPSISender sender(DIM, DELTA, send_size, METRIC, THREAD_NUM, send_pts,
+  FPSISender sender(DIM, DELTA, send_size, METRIC, 1, send_pts,
                     paillier_key.pub_key, paillier_key.priv_key, socketPair1);
 
   // offline
@@ -90,17 +90,17 @@ void run_low_dimension(const CLP &cmd) {
   timer.end("protocol_online");
   spdlog::info("******************** output preformance ********************");
 
-  spdlog::info("intersection size : ", recv.psi_ca_result);
+  spdlog::info("intersection size : {}", recv.psi_ca_result);
 
   timer.print();
-  // cout << "\n";
-  // recv.print_time();
-  // cout << "\n";
-  // sender.print_time();
-  // cout << "\n";
-  // recv.print_commus();
-  // cout << "\n";
-  // sender.print_commus();
+  cout << "\n";
+  recv.print_time();
+  cout << "\n";
+  sender.print_time();
+  cout << "\n";
+  recv.print_commus();
+  cout << "\n";
+  sender.print_commus();
 
   return;
 }

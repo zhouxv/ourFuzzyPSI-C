@@ -51,7 +51,8 @@ public:
         THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk), sockets(sockets) {
     // 参数初始化
     OMEGA_PARAM = get_omega_params(metric, delta);
-    IF_MATCH_PARAM = get_if_match_params(metric, delta);
+    if (metric != 0)
+      IF_MATCH_PARAM = get_if_match_params(metric, delta);
     SIDE_LEN = 2 * delta;
     BLK_CELLS = 1 << dim;
     DELTA_L2 = delta * delta;

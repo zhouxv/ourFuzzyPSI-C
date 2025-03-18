@@ -33,8 +33,6 @@ void FPSISender::init_low_inf() {
     random_values[i] = prng.get<u32>();
   }
 
-  spdlog::info("sender 计算随机数完成");
-
   random_sums.resize(PTS_NUM, 0);
 
   // 计算随机数和
@@ -58,6 +56,8 @@ void FPSISender::init_low_inf() {
   ipcl::PlainText pt_randoms = ipcl::PlainText(random_values);
   random_ciphers = pk.encrypt(pt_randoms);
 
+  spdlog::info("sender 计算随机数完成");
+
   ipcl::terminateContext();
 }
 
@@ -71,8 +71,6 @@ void FPSISender::init_low_lp() {
   for (u64 i = 0; i < PTS_NUM * DIM; i++) {
     random_values[i] = prng.get<u32>();
   }
-
-  spdlog::info("sender 计算随机数完成");
 
   random_sums.resize(PTS_NUM, 0);
 
@@ -100,6 +98,8 @@ void FPSISender::init_low_lp() {
   ipcl::PlainText pt_randoms = ipcl::PlainText(random_values);
   random_ciphers = pk.encrypt(pt_randoms);
 
+  spdlog::info("sender 计算随机数及密文完成");
+
   // 预计算一些同态密文, 这里注意, 与recv不同的是, 计算的会更多,
   // 与prefix最大的涵盖范围有关
   vector<u32> num_vec;
@@ -117,6 +117,8 @@ void FPSISender::init_low_lp() {
   lp_pre_ciphers = pk.encrypt(plain);
 
   ipcl::terminateContext();
+
+  spdlog::info("sender 计算 diff(e^p)密文完成");
 
   // if match pre
   //
@@ -136,6 +138,8 @@ void FPSISender::init_low_lp() {
     blake3_hasher_finalize(&hasher, hash_out.data(), 16);
     if_match_random_hashes.push_back(hash_out);
   }
+
+  spdlog::info("sender if match 预计算完成");
 }
 
 /// 在线阶段
