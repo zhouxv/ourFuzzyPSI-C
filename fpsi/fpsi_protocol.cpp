@@ -28,13 +28,13 @@ void run_low_dimension(const CLP &cmd) {
   simpleTimer timer;
 
   spdlog::info("*********************** setting ****************************");
-  spdlog::info("dimension         : ", DIM);
-  spdlog::info("delta             : ", DELTA);
-  spdlog::info("distance          : l_", METRIC);
-  spdlog::info("recv_set_size     : ", recv_size);
-  spdlog::info("send_set_size     :", send_size);
-  spdlog::info("intersection_size : ", intersection_size);
-  spdlog::info("thread_num        : ", THREAD_NUM);
+  spdlog::info("dimension         : {}", DIM);
+  spdlog::info("delta             : {}", DELTA);
+  spdlog::info("distance          : l_{}", METRIC);
+  spdlog::info("recv_set_size     : {}", recv_size);
+  spdlog::info("send_set_size     : {}", send_size);
+  spdlog::info("intersection_size : {}", intersection_size);
+  spdlog::info("thread_num        : {}", THREAD_NUM);
   spdlog::info("********************* offline start ************************");
 
   vector<pt> recv_pts(recv_size, vector<u64>(DIM, 0));
