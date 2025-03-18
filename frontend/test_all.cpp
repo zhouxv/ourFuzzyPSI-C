@@ -14,19 +14,6 @@
 #include <spdlog/spdlog.h>
 #include <vector>
 
-int main(int argc, char **argv) {
-  CLP cmd;
-  cmd.parse(argc, argv);
-  if (cmd.isSet("debug")) {
-    spdlog::set_level(spdlog::level::debug); // Set global log level to debug
-  } else {
-    spdlog::set_level(spdlog::level::info); // Set global log level to debug
-  }
-  spdlog::set_pattern("[%l] %v");
-
-  test_if_match_params(cmd);
-}
-
 void test_palliar() {
   PRNG prng(oc::sysRandomSeed());
 
