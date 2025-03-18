@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 project(ourFPSI)
 
+# include_directories：用于指定头文件的搜索路径，而不是库文件的路径
 include_directories(thirdparty/BLAKE3/c/)
 include_directories(utils)
 include_directories(fpsi)
@@ -35,6 +36,7 @@ target_link_libraries(main oc::libOTe)
 # ############################################
 # Link  Myblake3                 #
 # ############################################
+# target_link_libraries：用于指定链接的库文件，但直接使用相对路径可能会导致问题
 target_link_libraries(main ${CMAKE_SOURCE_DIR}/thirdparty/BLAKE3/c/libblake3.so)
 
 # ############################################

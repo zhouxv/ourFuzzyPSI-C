@@ -2,8 +2,10 @@
 
 #include "rb_okvs.h"
 #include "blake3.h"
-#include "util.h"
+#include <ipcl/bignum.h>
+#include <memory>
 #include <thread>
+#include <vector>
 
 #define XOR(a, b)                                                              \
   for (u64 xor_cnt = 0; xor_cnt < VALUE_LENGTH_IN_BLOCK; xor_cnt++) {          \
@@ -2470,30 +2472,4 @@ void print_grid(const std::vector<u64> &grid) {
   for (auto iter : grid) {
     std::cout << iter << " ";
   }
-}
-
-std::vector<block> bignumer_to_block_vector(const BigNumber &bn) {
-  std::vector<u32> ct;
-  bn.num2vec(ct);
-  std::vector<block> cipher_block(PAILLIER_CIPHER_SIZE_IN_BLOCK, ZeroBlock);
-  for (auto i = 0; i < PAILLIER_CIPHER_SIZE_IN_BLOCK; i++) {
-    cipher_block[i] = block(((u64(ct[4 * i + 3])) << 32) + (u64(ct[4 * i + 2])),
-                            ((u64(ct[4 * i + 1])) << 32) + (u64(ct[4 * i])));
-  }
-  return cipher_block;
-}
-
-BigNumber block_vector_to_bignumer(const std::vector<block> &ct) {
-  std::vector<uint32_t> ct_u32(PAILLIER_CIPHER_SIZE_IN_BLOCK * 4, 0);
-  u32 temp[4];
-  for (auto i = 0; i < PAILLIER_CIPHER_SIZE_IN_BLOCK; i++) {
-    memcpy(temp, ct[i].data(), 16);
-
-    ct_u32[4 * i] = temp[0];
-    ct_u32[4 * i + 1] = temp[1];
-    ct_u32[4 * i + 2] = temp[2];
-    ct_u32[4 * i + 3] = temp[3];
-  }
-  BigNumber bn = BigNumber(ct_u32.data(), ct_u32.size());
-  return bn;
 }

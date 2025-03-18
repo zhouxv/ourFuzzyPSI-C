@@ -10,6 +10,10 @@ build
 
 # 依赖库
 thirdparty/*
-libOTe
-pailliercryptolib
-BLAKE3
+
+# 忽略 test 目录下的所有文件
+test/*
+# 不忽略 test 目录下的 .cpp 文件
+!test/*.cpp
+# 不忽略 test 目录下的 CMakeLists.txt 文件
+!test/CMakeLists.txt

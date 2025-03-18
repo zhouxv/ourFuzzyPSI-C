@@ -1,5 +1,6 @@
 #include "util.h"
 #include <cryptoTools/Common/Defines.h>
+#include <random>
 
 // 采样，并指定交点数量
 void sample_points(u64 dim, u64 delta, u64 send_size, u64 recv_size,
@@ -7,24 +8,26 @@ void sample_points(u64 dim, u64 delta, u64 send_size, u64 recv_size,
                    vector<pt> &recv_pts) {
   PRNG prng(oc::sysRandomSeed());
 
+  std::random_device dev;
+  std::mt19937_64 rng(dev());
+  std::uniform_int_distribution<u64> dist(0, numeric_limits<u64>::max());
+
   for (u64 i = 0; i < send_size; i++) {
     for (u64 j = 0; j < dim; j++) {
       send_pts[i][j] =
-          (prng.get<u64>()) % ((0xffff'ffff'ffff'ffff) - 3 * delta) +
-          1.5 * delta;
+          (dist(rng)) % ((0xffff'ffff'ffff'ffff) - 3 * delta) + 1.5 * delta;
     }
   }
 
   for (u64 i = 0; i < recv_size; i++) {
     for (u64 j = 0; j < dim; j++) {
       recv_pts[i][j] =
-          (prng.get<u64>()) % ((0xffff'ffff'ffff'ffff) - 3 * delta) +
-          1.5 * delta;
+          (dist(rng)) % ((0xffff'ffff'ffff'ffff) - 3 * delta) + 1.5 * delta;
     }
   }
 
-  // u64 base_pos = (prng.get<u64>()) % (send_size - intersection_size - 1);
-  u64 base_pos = 0;
+  u64 base_pos = (prng.get<u64>()) % (send_size - intersection_size - 1);
+  // u64 base_pos = 0;
   for (u64 i = base_pos; i < base_pos + intersection_size; i++) {
     for (u64 j = 0; j < dim; j++) {
       send_pts[i][j] = recv_pts[i - base_pos][j];
@@ -322,4 +325,85 @@ const OmegaUTable::ParamType get_omega_params(u64 metric, u64 delta) {
   }
   u64 t = (metric == 0) ? (delta * 2 + 1) : (delta + 1);
   return OmegaUTable::getSelectedParam(t);
+}
+
+const IfMatchParamTable::ParamType get_if_match_params(u64 metric, u64 delta) {
+  if (metric != 1 && metric != 2) {
+    throw invalid_argument("get_if_match_params: Invalid metric value.");
+  }
+
+  return IfMatchParamTable::getSelectedParam(fast_pow(delta, metric) + 1);
+}
+
+std::vector<block> bignumer_to_block_vector(const BigNumber &bn) {
+  std::vector<u32> ct;
+  bn.num2vec(ct);
+  std::vector<block> cipher_block(PAILLIER_CIPHER_SIZE_IN_BLOCK, ZeroBlock);
+  for (auto i = 0; i < PAILLIER_CIPHER_SIZE_IN_BLOCK; i++) {
+    cipher_block[i] = block(((u64(ct[4 * i + 3])) << 32) + (u64(ct[4 * i + 2])),
+                            ((u64(ct[4 * i + 1])) << 32) + (u64(ct[4 * i])));
+  }
+  return cipher_block;
+}
+
+BigNumber block_vector_to_bignumer(const std::vector<block> &ct) {
+  std::vector<uint32_t> ct_u32(PAILLIER_CIPHER_SIZE_IN_BLOCK * 4, 0);
+  u32 temp[4];
+  for (auto i = 0; i < PAILLIER_CIPHER_SIZE_IN_BLOCK; i++) {
+    memcpy(temp, ct[i].data(), 16);
+
+    ct_u32[4 * i] = temp[0];
+    ct_u32[4 * i + 1] = temp[1];
+    ct_u32[4 * i + 2] = temp[2];
+    ct_u32[4 * i + 3] = temp[3];
+  }
+  BigNumber bn = BigNumber(ct_u32.data(), ct_u32.size());
+  return bn;
+}
+
+std::vector<block>
+bignumers_to_block_vector(const std::vector<BigNumber> &bns) {
+  auto count = bns.size();
+  std::vector<block> cipher_block;
+  cipher_block.reserve(PAILLIER_CIPHER_SIZE_IN_BLOCK * count);
+
+  std::vector<u32> ct;
+  ct.reserve(PAILLIER_CIPHER_SIZE_IN_BLOCK * 4);
+
+  for (const auto &bn : bns) {
+    bn.num2vec(ct);
+    // notes: 小端序 Little-endian BLock构造, 如果是大端, 需要修改
+    for (auto i = 0; i < PAILLIER_CIPHER_SIZE_IN_BLOCK; i++) {
+      cipher_block.push_back(
+          block(((u64(ct[4 * i + 3])) << 32) + (u64(ct[4 * i + 2])),
+                ((u64(ct[4 * i + 1])) << 32) + (u64(ct[4 * i]))));
+    }
+    ct.clear();
+  }
+
+  return cipher_block;
+}
+
+std::vector<BigNumber>
+block_vector_to_bignumers(const std::vector<block> &ct, const u64 &value_size,
+                          std::shared_ptr<BigNumber> nsq) {
+  vector<BigNumber> bns;
+
+  std::vector<uint32_t> ct_u32(PAILLIER_CIPHER_SIZE_IN_BLOCK * 4, 0);
+
+  for (auto i = 0; i < value_size; i++) {
+    u32 temp[4];
+    u64 index = i * PAILLIER_CIPHER_SIZE_IN_BLOCK;
+    for (auto j = 0; j < PAILLIER_CIPHER_SIZE_IN_BLOCK; j++) {
+      memcpy(temp, ct[index + j].data(), 16);
+      ct_u32[4 * j] = temp[0];
+      ct_u32[4 * j + 1] = temp[1];
+      ct_u32[4 * j + 2] = temp[2];
+      ct_u32[4 * j + 3] = temp[3];
+    }
+
+    bns.push_back(BigNumber(ct_u32.data(), ct_u32.size()) % (*nsq));
+  }
+
+  return bns;
 }

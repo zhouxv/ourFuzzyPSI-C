@@ -6,6 +6,7 @@
 #include <cryptoTools/Common/Timer.h>
 #include <cryptoTools/Crypto/SodiumCurve.h>
 #include <ipcl/bignum.h>
+#include <vector>
 
 #ifndef CRYPTOTOOLS_RBOKVS_H
 #define CRYPTOTOOLS_RBOKVS_H
@@ -96,6 +97,7 @@ public:
 
   RBOKVS() = default;
   RBOKVS(const RBOKVS &copy) {}
+
   ~RBOKVS() = default;
 
   void init(const u64 &n, const double &epsilon, const u64 &stasSecParam,
@@ -218,13 +220,14 @@ void print_row_of_matrix_rist(MatrixRow_rist &a, u64 band_width);
 
 void print_grid(const std::vector<u64> &grid);
 
-// 辅助 PAILLIER OKVS的工具函数
+// 辅助 PAILLIER OKVS的工具函数, 只适用于 inf
 std::vector<block> bignumer_to_block_vector(const BigNumber &bn);
 BigNumber block_vector_to_bignumer(const std::vector<block> &ct);
 
-// void desolve(std::vector<MatrixRow_rist>& rows,
-// std::vector<std::vector<Rist25519_number>>& output,
-//             const u64& VALUE_LENGTH_IN_NUMBER, const u64& width_band, const
-//             u64& num_columns);
+// 辅助 PAILLIER OKVS的工具函数, 适用于 Lp
+std::vector<block> bignumers_to_block_vector(const std::vector<BigNumber> &bn);
+std::vector<BigNumber>
+block_vector_to_bignumers(const std::vector<block> &ct, const u64 &value_size,
+                          std::shared_ptr<BigNumber> nsq);
 
 #endif

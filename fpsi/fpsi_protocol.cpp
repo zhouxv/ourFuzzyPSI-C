@@ -66,7 +66,7 @@ void run_low_dimension(const CLP &cmd) {
   FPSIRecv recv(DIM, DELTA, recv_size, METRIC, THREAD_NUM, recv_pts,
                 paillier_key.pub_key, paillier_key.priv_key, socketPair0);
   FPSISender sender(DIM, DELTA, send_size, METRIC, THREAD_NUM, send_pts,
-                    paillier_key.pub_key, socketPair1);
+                    paillier_key.pub_key, paillier_key.priv_key, socketPair1);
 
   // offline
   timer.start();
@@ -83,8 +83,8 @@ void run_low_dimension(const CLP &cmd) {
 
   timer.start();
   // 使用 std::bind 将成员函数和对象绑定
-  std::thread recv_msg(std::bind(&FPSIRecv::msg_low, &recv));
-  std::thread send_msg(std::bind(&FPSISender::msg_low, &sender));
+  std::thread recv_msg(std::bind(&FPSIRecv::msg, &recv));
+  std::thread send_msg(std::bind(&FPSISender::msg, &sender));
 
   recv_msg.join();
   send_msg.join();
