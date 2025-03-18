@@ -298,6 +298,47 @@ void test_if_match_params(CLP &cmd) {
   }
 }
 
+// 测试 u64 的同态
+void test_u64_random(CLP &cmd) {
+  ipcl::initializeContext("QAT");
+  ipcl::KeyPair paillier_key = ipcl::generateKeypair(2048, true);
+  auto pk = paillier_key.pub_key;
+  auto sk = paillier_key.priv_key;
+
+  ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
+
+  PRNG prng((block(oc::sysRandomSeed())));
+
+  // vector<u32> a(100, 0);
+  // ipcl::PlainText a_p = ipcl::PlainText(a);
+
+  u64 zero = 0;
+  u64 random = 48546548454465;
+
+  Ipp32u *data1 = reinterpret_cast<Ipp32u *>(&zero);
+  Ipp32u *data2 = reinterpret_cast<Ipp32u *>(&random);
+
+  // 使用BigNumber构造函数进行初始化
+  BigNumber bn1(1);
+  BigNumber bn2(data2, 2);
+
+  auto a = ipcl::PlainText(bn1);
+  auto b = ipcl::PlainText(bn2);
+
+  auto c = pk.encrypt(a) + pk.encrypt(b);
+  auto dec = sk.decrypt(c);
+
+  auto dec_big = dec.getElementVec(0);
+  for (auto &tmp : dec_big) {
+    cout << tmp << endl;
+  }
+
+  u64 res = ((u64)dec_big[1] << 32) | dec_big[0];
+  cout << "res: " << res << endl;
+
+  ipcl::terminateContext();
+}
+
 // 将二进制前缀转换为区间 [min, max]
 std::pair<u64, u64> prefix_to_range(const std::string &prefix, u64 bits) {
   u64 min_val = 0, max_val = 0;

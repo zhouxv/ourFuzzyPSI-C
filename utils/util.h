@@ -81,6 +81,57 @@ std::vector<BigNumber>
 block_vector_to_bignumers(const std::vector<block> &ct, const u64 &value_size,
                           std::shared_ptr<BigNumber> nsq);
 
+/// 计算所有组合的和
+///
+/// 该函数接受一个二维向量 `results`，其中每个子向量包含一组 `u64`
+/// 值。函数生成所有可能的组合，并计算每个组合的和。
+///
+/// # 参数
+/// - `results`: 一个包含多个 `Vec<u64>` 的向量，每个子向量代表一个维度的值。
+///
+/// # 返回
+/// 返回一个 `Vec<u64>`，其中每个元素是对应组合的和。
+///
+/// # 示例
+/// ```
+/// let results = vec![vec![1, 2], vec![3, 4]];
+/// let sums = sum_combinations(&results);
+/// assert_eq!(sums, vec![4, 5, 5, 6]); // 组合的和
+/// ```
+///
+/// # 注意
+/// - 函数假设所有子向量的长度相同。
+/// - 如果 `results` 为空，函数将返回一个空的 `Vec<u64>`。
+template <typename T>
+vector<u64> sum_combinations(const oc::span<T> &results, u64 dim) {
+  u64 n = results.size() / dim;
+  u64 count = fast_pow(n, dim);
+  vector<u64> sums(count);
+
+  // 预计算 n^j，减少 `fast_pow` 的调用
+  vector<u64> powers(dim);
+  powers[0] = 1; // n^0 = 1
+  for (u64 j = 1; j < dim; ++j) {
+    powers[j] = powers[j - 1] * n; // 直接计算 n^j
+  }
+
+  for (u64 i = 0; i < count; ++i) {
+    u64 current_sum = 0;
+    for (u64 j = 0; j < dim; ++j) {
+      // 计算当前维度的索引
+      u64 index = (i / powers[j]) % n;
+      // 累加当前维度的值
+      current_sum += results[j * n + index];
+    }
+    sums[i] = current_sum;
+  }
+
+  // spdlog::info("results.size()" << results.size() << "sums.size() "
+  //                            << sums.size());
+
+  return sums;
+}
+
 /// 获取 OKVS 的 key, inf
 inline vector<block> get_keys_from_dec(const vector<string> &strs) {
   blake3_hasher hasher;

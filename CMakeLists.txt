@@ -15,14 +15,7 @@ file(GLOB_RECURSE SRCS
 
 add_executable(main ${SRCS})
 
-if(CMAKE_BUILD_TYPE MATCHES "Debug")
-    target_compile_options(main PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-std=c++20> -lpthread -O2 -fsanitize=address)
-    target_link_options(main PUBLIC -fsanitize=address)
-endif()
-
-if(CMAKE_BUILD_TYPE MATCHES "Release")
-    target_compile_options(main PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-std=c++20> -lpthread -O2)
-endif()
+target_compile_options(main PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-std=c++20> -lpthread -O2)
 
 set(CMAKE_BUILD_TYPE Release)
 

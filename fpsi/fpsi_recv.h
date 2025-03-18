@@ -62,13 +62,11 @@ public:
 
   /// offline
   void init();
-  void init_inf();
   void init_inf_improve();
   void init_lp();
 
   /// online
   void msg();
-  void msg_low_inf();
   void msg_low_inf_improve();
   void msg_low_lp();
 

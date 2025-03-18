@@ -63,6 +63,9 @@ int main(int argc, char **argv) {
     case 5:
       test_bitset();
       return 0;
+    case 6:
+      test_u64_random(cmd);
+      return 0;
     }
   }
 

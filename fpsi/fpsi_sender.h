@@ -65,7 +65,6 @@ public:
 
   /// 在线阶段
   void msg();
-  void msg_low_inf();
   void msg_low_inf_improve();
   void msg_low_lp();
 
