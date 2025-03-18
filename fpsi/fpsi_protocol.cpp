@@ -20,23 +20,22 @@ void run_low_dimension(const CLP &cmd) {
   const u64 THREAD_NUM = cmd.getOr("th", 1);
 
   if ((intersection_size > recv_size) | (intersection_size > send_size)) {
-    printf("intersection_size should not be greater than set_size\n");
+    spdlog::error("intersection_size should not be greater than set_size");
     return;
   }
 
   // 计时
   simpleTimer timer;
 
-  cout << ("*********************** setting ****************************\n");
-  cout << "dimension         : " << DIM << endl;
-  cout << "delta             : " << DELTA << endl;
-  cout << "distance          : l_" << METRIC << endl;
-  cout << "recv_set_size     : " << recv_size << endl;
-  cout << "send_set_size     :" << send_size << endl;
-  cout << "intersection_size : " << intersection_size << endl;
-  cout << "thread_num        : " << THREAD_NUM << endl;
-
-  cout << ("*********************** offline start ************************\n");
+  spdlog::info("*********************** setting ****************************");
+  spdlog::info("dimension         : ", DIM);
+  spdlog::info("delta             : ", DELTA);
+  spdlog::info("distance          : l_", METRIC);
+  spdlog::info("recv_set_size     : ", recv_size);
+  spdlog::info("send_set_size     :", send_size);
+  spdlog::info("intersection_size : ", intersection_size);
+  spdlog::info("thread_num        : ", THREAD_NUM);
+  spdlog::info("********************* offline start ************************");
 
   vector<pt> recv_pts(recv_size, vector<u64>(DIM, 0));
   vector<pt> send_pts(send_size, vector<u64>(DIM, 0));
@@ -79,7 +78,7 @@ void run_low_dimension(const CLP &cmd) {
   timer.end("sender_init");
   spdlog::info("sender setup完成");
 
-  cout << ("*********************** online start ************************\n");
+  spdlog::info("*********************** online start ************************");
 
   timer.start();
   // 使用 std::bind 将成员函数和对象绑定
@@ -89,17 +88,19 @@ void run_low_dimension(const CLP &cmd) {
   recv_msg.join();
   send_msg.join();
   timer.end("protocol_online");
-  cout << ("******************** output preformance *********************\n");
+  spdlog::info("******************** output preformance ********************");
+
+  spdlog::info("intersection size : ", recv.psi_ca_result);
 
   timer.print();
-  cout << "\n";
-  recv.print_time();
-  cout << "\n";
-  sender.print_time();
-  cout << "\n";
-  recv.print_commus();
-  cout << "\n";
-  sender.print_commus();
+  // cout << "\n";
+  // recv.print_time();
+  // cout << "\n";
+  // sender.print_time();
+  // cout << "\n";
+  // recv.print_commus();
+  // cout << "\n";
+  // sender.print_commus();
 
   return;
 }

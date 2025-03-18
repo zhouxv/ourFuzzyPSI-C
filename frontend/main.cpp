@@ -1,3 +1,4 @@
+#include <cryptoTools/Common/Defines.h>
 #include <spdlog/common.h>
 #include <spdlog/spdlog.h>
 #include <string>
@@ -6,22 +7,32 @@
 #include <cryptoTools/Crypto/PRNG.h>
 #include <ipcl/ipcl.hpp>
 
+#include "util.h"
+
 #include "fpsi_protocol.h"
 #include "test_all.h"
-#include "util.h"
 
 int main(int argc, char **argv) {
   CLP cmd;
   cmd.parse(argc, argv);
 
   // 设置日志
-  if (cmd.isSet("debug")) {
-    spdlog::set_level(spdlog::level::debug); // Set global log level to debug
-  } else {
-    spdlog::set_level(spdlog::level::info); // Set global log level to debug
+  auto log_level = cmd.getOr<u64>("log", 1);
+  switch (log_level) {
+  case 0:
+    spdlog::set_level(spdlog::level::off);
+    break;
+  case 1:
+    spdlog::set_level(spdlog::level::info);
+    break;
+  case 2:
+    spdlog::set_level(spdlog::level::debug);
+    break;
   }
+
   spdlog::set_pattern("[%l] %v");
 
+  // 选择执行协议
   if (cmd.isSet("p")) {
     const u64 protocol_type = cmd.getOr("p", 0);
 
@@ -32,6 +43,7 @@ int main(int argc, char **argv) {
     }
   }
 
+  // 选择测试内容
   if (cmd.isSet("t")) {
     const u64 protocol_type = cmd.getOr("t", 0);
 

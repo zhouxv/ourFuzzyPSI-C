@@ -46,7 +46,7 @@ using pt = vector<u64>;
 // OKVS 参数
 const u64 OKVS_LAMBDA = 10;
 const double OKVS_EPSILON = 0.1;
-const block OKVS_SEED = oc::block(7071);
+const block OKVS_SEED = oc::block(6800382592637124185);
 
 // 采样，并指定交点数量
 void sample_points(u64 dim, u64 delta, u64 sender_size, u64 recv_size,

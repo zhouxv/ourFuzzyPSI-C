@@ -31,6 +31,8 @@ public:
   u64 OKVS_COUNT;
   u64 OKVS_SIZE;
 
+  u64 psi_ca_result = 0;
+
   // OKVS
   RBOKVS rb_okvs;
   vector<RBOKVS> rb_okvs_vec;
@@ -41,6 +43,7 @@ public:
   vector<vector<vector<block>>> inf_value_pre_ciphers;
   vector<vector<block>> if_match_value_pre_ciphers;
 
+  // 构造函数
   FPSIRecv(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
            vector<pt> &pts, ipcl::PublicKey pk, ipcl::PrivateKey sk,
            vector<coproto::LocalAsyncSocket> &sockets)

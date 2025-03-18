@@ -509,7 +509,7 @@ void FPSIRecv::msg_low_inf_improve() {
 
   insert_timer(inf_timer);
 
-  spdlog::info("recv intersection_count: {0}", intersection_count);
+  psi_ca_result = intersection_count.load();
 }
 
 /// online 低维 Lp 范数, 多线程 OKVS
@@ -753,11 +753,26 @@ void FPSIRecv::msg_low_lp() {
                 if_match_keys.size(), if_match_okvs_size,
                 if_match_value_pre_ciphers.size());
 
+  auto keys_size = if_match_keys.size();
+
+  // 使用 unordered_set 去重
+  unordered_set<block> unique_keys(if_match_keys.begin(), if_match_keys.end());
+
+  // 将去重后的结果存回 vector
+  vector<block> unique_if_match_keys(unique_keys.begin(), unique_keys.end());
+
+  padding_keys(unique_if_match_keys, keys_size);
+  spdlog::info("recv if match keys 去重完成");
+
   // if_match encoding
   vector<vector<block>> if_match_encoding(
       if_match_okvs.mSize, vector<block>(PAILLIER_CIPHER_SIZE_IN_BLOCK));
-  if_match_okvs.encode(if_match_keys, if_match_value_pre_ciphers,
-                       PAILLIER_CIPHER_SIZE_IN_BLOCK, if_match_encoding);
+  EncodeStatus if_match_encode_status =
+      if_match_okvs.encode(unique_if_match_keys, if_match_value_pre_ciphers,
+                           PAILLIER_CIPHER_SIZE_IN_BLOCK, if_match_encoding);
+
+  // if_match_okvs;
+
   spdlog::info("recv if match okvs encoding 编码完成");
   lp_timer.end("recv_if_match_encoding");
 
@@ -815,8 +830,7 @@ void FPSIRecv::msg_low_lp() {
       intersection_count += 1;
     }
   }
-
-  spdlog::info("recv intersection_count: {0}", intersection_count);
-
   insert_timer(lp_timer);
+
+  psi_ca_result = intersection_count;
 }
