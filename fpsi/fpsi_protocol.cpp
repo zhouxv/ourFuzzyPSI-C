@@ -124,8 +124,8 @@ void test_low_dimension(const oc::CLP &cmd) {
     for (auto del : deltas) {
 
       auto new_logger = spdlog::basic_logger_mt(
-          "new_default_logger", std::format("all_params_2_{}_{}.txt", m, del),
-          true);
+          std::format("logger_2_{}_{}", m, del),
+          std::format("all_params_2_{}_{}.txt", m, del), true);
       spdlog::set_default_logger(new_logger);
 
       auto t = (m == 0) ? (del * 2 + 1) : (del + 1);
