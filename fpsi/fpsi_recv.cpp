@@ -121,8 +121,6 @@ void FPSIRecv::init_lp() {
     }
   }
 
-  // if_match_value_pre_ciphers;
-
   spdlog::debug("recv if_match init done");
 
   ipcl::terminateContext();
@@ -487,6 +485,10 @@ void FPSIRecv::msg_low_lp() {
       auto &&sums = sum_combinations<u64>(
           oc::span<u64>(plain_nums_data + i * cipher_count, cipher_count), DIM);
 
+      // auto &&sums = sum_combinations<u32>(
+      //     oc::span<u32>(plain_nums_data + i * cipher_count, cipher_count),
+      //     DIM);
+
       sums_vec[thread_index].insert(sums_vec[thread_index].end(),
                                     std::make_move_iterator(sums.begin()),
                                     std::make_move_iterator(sums.end()));
@@ -562,9 +564,9 @@ void FPSIRecv::msg_low_lp() {
   // if_match encoding
   vector<vector<block>> if_match_encoding(
       if_match_okvs.mSize, vector<block>(PAILLIER_CIPHER_SIZE_IN_BLOCK));
-  EncodeStatus if_match_encode_status =
-      if_match_okvs.encode(unique_if_match_keys, if_match_value_pre_ciphers,
-                           PAILLIER_CIPHER_SIZE_IN_BLOCK, if_match_encoding);
+
+  if_match_okvs.encode(unique_if_match_keys, if_match_value_pre_ciphers,
+                       PAILLIER_CIPHER_SIZE_IN_BLOCK, if_match_encoding);
 
   // if_match_okvs;
 

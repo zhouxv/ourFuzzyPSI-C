@@ -69,12 +69,11 @@ void FPSISender::init_low_lp() {
 
   PRNG prng((block(oc::sysRandomSeed())));
 
-  // 计算随机数, 取低16位
   vector<u64> random_values(PTS_NUM * DIM, 0);
   vector<BigNumber> random_bns(PTS_NUM * DIM, 0);
 
   for (u64 i = 0; i < PTS_NUM * DIM; i++) {
-    random_values[i] = prng.get<u64>();
+    random_values[i] = prng.get<u64>() >> DIM;
     random_bns[i] = BigNumber(reinterpret_cast<Ipp32u *>(&random_values[i]), 2);
   }
 
@@ -88,15 +87,15 @@ void FPSISender::init_low_lp() {
   }
 
   // 计算随机数和的哈希
-  blake3_hasher hasher;
-  block hash_out;
-  random_hashes.reserve(PTS_NUM);
-  for (u64 i = 0; i < PTS_NUM; i++) {
-    blake3_hasher_init(&hasher);
-    blake3_hasher_update(&hasher, &random_sums[i], sizeof(u64));
-    blake3_hasher_finalize(&hasher, hash_out.data(), 16);
-    random_hashes.push_back(hash_out);
-  }
+  // blake3_hasher hasher;
+  // block hash_out;
+  // random_hashes.reserve(PTS_NUM);
+  // for (u64 i = 0; i < PTS_NUM; i++) {
+  //   blake3_hasher_init(&hasher);
+  //   blake3_hasher_update(&hasher, &random_sums[i], sizeof(u64));
+  //   blake3_hasher_finalize(&hasher, hash_out.data(), 16);
+  //   random_hashes.push_back(hash_out);
+  // }
 
   ipcl::initializeContext("QAT");
   ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
@@ -108,18 +107,21 @@ void FPSISender::init_low_lp() {
 
   // 预计算一些同态密文, 这里注意, 与recv不同的是, 计算的会更多,
   // 与prefix最大的涵盖范围有关
-  vector<u32> num_vec;
+  // vector<u64> num_vec;
+  vector<BigNumber> ep_bns;
   // 找最大值
   auto max_v = *OMEGA_PARAM.first.rbegin();
   max_v = fast_pow(2, max_v);
 
-  num_vec.reserve(max_v);
+  // num_vec.reserve(max_v);
+  ep_bns.reserve(max_v);
 
   for (u64 i = 0; i <= max_v; i++) {
-    num_vec.push_back(fast_pow(i, METRIC));
+    auto tmp = fast_pow(i, METRIC);
+    ep_bns.push_back(BigNumber(reinterpret_cast<Ipp32u *>(&tmp), 2));
   }
 
-  ipcl::PlainText plain = ipcl::PlainText(num_vec);
+  ipcl::PlainText plain = ipcl::PlainText(ep_bns);
   lp_pre_ciphers = pk.encrypt(plain);
 
   ipcl::terminateContext();
@@ -134,13 +136,15 @@ void FPSISender::init_low_lp() {
   for (u64 i = 0; i < if_match_count; i++) {
     if_macth_randoms[i] = prng.get<u64>();
     if_match_bns[i] =
-        BigNumber(reinterpret_cast<Ipp32u *>(&random_values[i]), 2);
+        BigNumber(reinterpret_cast<Ipp32u *>(&if_macth_randoms[i]), 2);
   }
 
   if_match_random_ciphers = pk.encrypt(ipcl::PlainText(if_match_bns));
 
   if_match_random_hashes.reserve(if_match_count);
 
+  blake3_hasher hasher;
+  block hash_out;
   for (u64 i = 0; i < if_match_count; i++) {
     blake3_hasher_init(&hasher);
     blake3_hasher_update(&hasher, &if_macth_randoms[i], sizeof(u64));
