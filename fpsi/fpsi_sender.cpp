@@ -264,7 +264,7 @@ void FPSISender::msg_low_inf_improve() {
     insert_commus(std::format("sender_{}_ciphers", thread_index), thread_index);
     spdlog::info("sender thread_index {} : 密文发送完成", thread_index);
 
-    insert_timer(get_value_timer_inf);
+    merge_timer(get_value_timer_inf);
     ipcl::terminateContext();
   };
 
@@ -423,7 +423,7 @@ void FPSISender::msg_low_lp() {
     spdlog::info("sender thread_index {} : 密文发送完成", thread_index);
 
     ipcl::terminateContext();
-    insert_timer(get_value_lp_timer);
+    merge_timer(get_value_lp_timer);
   };
 
   timer.start();
@@ -503,5 +503,5 @@ void FPSISender::msg_low_lp() {
   insert_commus("sender_0_if_match_hashes", 0);
   spdlog::info("sender if match 哈希发送完成");
 
-  insert_timer(timer);
+  merge_timer(timer);
 }

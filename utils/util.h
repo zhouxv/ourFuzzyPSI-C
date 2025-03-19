@@ -7,6 +7,7 @@
 #include <cryptoTools/Common/block.h>
 #include <cryptoTools/Crypto/PRNG.h>
 #include <ipcl/bignum.h>
+#include <spdlog/spdlog.h>
 #include <utility>
 #include <vector>
 
@@ -23,21 +24,37 @@ typedef std::chrono::high_resolution_clock::time_point tVar;
 class simpleTimer {
 public:
   tVar t;
-  std::vector<std::pair<string, double>> timers;
+  std::map<string, double> timers;
+  std::vector<string> timer_keys;
 
   simpleTimer() {}
 
   void start() { tStart(t); }
-  void end(string msg) { timers.push_back({msg, tEnd(t)}); }
+  void end(string msg) {
+    timer_keys.push_back(msg);
+    timers[msg] = tEnd(t);
+  }
 
   void print() {
-    for (auto &x : timers) {
-      cout << x.first << ": " << x.second << "ms; " << x.second / 1000 << "s"
-           << endl;
+    for (const string &key : timer_keys) {
+      spdlog::info("{}: {} ms; {} s", key, timers[key], timers[key] / 1000);
     }
   }
 
-  std::vector<std::pair<string, double>> output() { return timers; }
+  double get_by_key(string &key) { return timers.at(key); }
+
+  void merge(simpleTimer &other) {
+    auto other_keys = other.timer_keys;
+    auto other_maps = other.timers;
+
+    timer_keys.insert(timer_keys.end(), other_keys.begin(), other_keys.end());
+    timers.insert(other_maps.begin(), other_maps.end());
+  }
+
+  void clear() {
+    timers.clear();
+    timer_keys.clear();
+  }
 };
 
 // 点的别名

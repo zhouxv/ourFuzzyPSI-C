@@ -181,7 +181,7 @@ void FPSIRecv::msg_low_inf_improve() {
     get_list_inf_timer.end(std::format("recv_{}_encode", thread_index));
     spdlog::debug(std::format("recv {} encode 完成", thread_index));
 
-    insert_timer(get_list_inf_timer);
+    merge_timer(get_list_inf_timer);
   };
 
   vector<thread> get_list_threads;
@@ -209,11 +209,13 @@ void FPSIRecv::msg_low_inf_improve() {
   coproto::sync_wait(sockets[0].send(okvs_mSize));
 
   coproto::sync_wait(sockets[0].flush());
+  inf_timer.start();
   for (u64 i = 0; i < OKVS_COUNT; i++) {
     for (u64 j = 0; j < okvs_mSize; j++) {
       coproto::sync_wait(sockets[0].send(encodings[i][j]));
     }
   }
+  inf_timer.end("recv_encoding_send");
   insert_commus("recv_encoding", 0);
   spdlog::info("recv okvs encoding 发送完成");
 
@@ -289,7 +291,7 @@ void FPSIRecv::msg_low_inf_improve() {
     }
     post_process_inf_timer.end(
         std::format("recv_thread_{}_intersection", thread_index));
-    insert_timer(post_process_inf_timer);
+    merge_timer(post_process_inf_timer);
   };
 
   // 启动 post_process 线程
@@ -305,7 +307,7 @@ void FPSIRecv::msg_low_inf_improve() {
   }
   inf_timer.end("recv_post_process_total");
 
-  insert_timer(inf_timer);
+  merge_timer(inf_timer);
 
   psi_ca_result = intersection_count.load();
 }
@@ -391,7 +393,7 @@ void FPSIRecv::msg_low_lp() {
     get_list_lp_timer.end(std::format("recv_{}_encode", thread_index));
     spdlog::debug(std::format("recv {} encode 完成", thread_index));
 
-    insert_timer(get_list_lp_timer);
+    merge_timer(get_list_lp_timer);
   };
 
   vector<thread> get_list_threads;
@@ -419,12 +421,13 @@ void FPSIRecv::msg_low_lp() {
   coproto::sync_wait(sockets[0].send(okvs_mSize));
 
   coproto::sync_wait(sockets[0].flush());
+  lp_timer.start();
   for (u64 i = 0; i < OKVS_COUNT; i++) {
     for (u64 j = 0; j < okvs_mSize; j++) {
       coproto::sync_wait(sockets[0].send(encodings[i][j]));
     }
   }
-
+  lp_timer.end("recv_encoding_send");
   insert_commus("recv_encoding", 0);
   spdlog::info("recv okvs encoding 发送完成");
 
@@ -494,7 +497,7 @@ void FPSIRecv::msg_low_lp() {
                                     std::make_move_iterator(sums.end()));
     }
 
-    insert_timer(post_process_lp_timer);
+    merge_timer(post_process_lp_timer);
   };
 
   lp_timer.start();
@@ -628,7 +631,7 @@ void FPSIRecv::msg_low_lp() {
       intersection_count += 1;
     }
   }
-  insert_timer(lp_timer);
+  merge_timer(lp_timer);
 
   psi_ca_result = intersection_count;
 }

@@ -68,27 +68,19 @@ public:
   void msg_low_lp();
 
   // 计时器
-  std::vector<std::pair<string, double>> timers;
-  void print_time() {
-    for (auto &x : timers) {
-      cout << x.first << ": " << x.second << "ms; " << x.second / 1000.0 << "s"
-           << endl;
-    }
-  }
+  // 计时器
+  simpleTimer recvTimer;
 
-  void insert_timer(simpleTimer &t) {
-    auto other = t.output();
-    for (auto tmp : other) {
-      timers.push_back(tmp);
-    }
-  }
+  void print_time() { recvTimer.print(); }
+
+  void merge_timer(simpleTimer &other) { recvTimer.merge(other); }
 
   // 通信计数
   std::vector<std::pair<string, u64>> commus;
   void print_commus() {
     for (auto &x : commus) {
-      cout << x.first << ": " << x.second << " 字节; " << x.second / 1024
-           << " KB; " << x.second / 1024.0 / 1024.0 << " MB" << endl;
+      spdlog::info("{}: {} 字节; {} MB", x.first, x.second,
+                   x.second / 1024.0 / 1024.0);
     }
   }
 
