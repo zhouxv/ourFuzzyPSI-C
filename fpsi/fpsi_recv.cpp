@@ -19,10 +19,10 @@
 #include <ipcl/plaintext.hpp>
 
 /// offline
-void FPSIRecv::init() { (METRIC == 0) ? init_inf_improve() : init_lp(); }
+void FPSIRecv::init() { (METRIC == 0) ? init_inf_low() : init_lp_low(); }
 
 /// offline 低维无穷范数, 多线程 OKVS
-void FPSIRecv::init_inf_improve() {
+void FPSIRecv::init_inf_low() {
   auto omega = OMEGA_PARAM.second;
 
   rb_okvs_vec.resize(OKVS_COUNT);
@@ -62,7 +62,7 @@ void FPSIRecv::init_inf_improve() {
 }
 
 /// offline 低维 Lp 范数, 多线程 OKVS
-void FPSIRecv::init_lp() {
+void FPSIRecv::init_lp_low() {
   auto omega = OMEGA_PARAM.second;
 
   // OKVS 初始化
@@ -127,10 +127,10 @@ void FPSIRecv::init_lp() {
 }
 
 // online 阶段
-void FPSIRecv::msg() { (METRIC == 0) ? msg_low_inf_improve() : msg_low_lp(); }
+void FPSIRecv::msg() { (METRIC == 0) ? msg_inf_low() : msg_lp_low(); }
 
 /// online 低维无穷范数, 多线程 OKVS
-void FPSIRecv::msg_low_inf_improve() {
+void FPSIRecv::msg_inf_low() {
   simpleTimer inf_timer;
   /*--------------------------------------------------------------------------------------------------------------------------------*/
   // getList inf and encode
@@ -313,7 +313,7 @@ void FPSIRecv::msg_low_inf_improve() {
 }
 
 /// online 低维 Lp 范数, 多线程 OKVS
-void FPSIRecv::msg_low_lp() {
+void FPSIRecv::msg_lp_low() {
   simpleTimer lp_timer;
   /*--------------------------------------------------------------------------------------------------------------------------------*/
   // getList Lp and encode

@@ -35,13 +35,14 @@ public:
   u64 DELTA_L2;  // delta的平方
 
   // 预计算的数据
-  vector<block> random_hashes;
-  vector<u64> random_sums;
-  ipcl::CipherText random_ciphers;
-  ipcl::CipherText lp_pre_ciphers;
+  ipcl::CipherText lp_pre_ciphers; // getValue 使用
 
-  vector<block> if_match_random_hashes;
-  ipcl::CipherText if_match_random_ciphers;
+  vector<block> random_hashes;     // L_inf, L_p getValue 使用
+  ipcl::CipherText random_ciphers; // L_inf, L_p getValue 使用
+
+  vector<u64> random_sums;                  // L_p if match 使用
+  vector<block> if_match_random_hashes;     // L_p if match 使用
+  ipcl::CipherText if_match_random_ciphers; // L_p if match 使用
 
   FPSISender(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
              vector<pt> &pts, ipcl::PublicKey pk, ipcl::PrivateKey sk,
@@ -59,15 +60,14 @@ public:
 
   /// 离线阶段
   void init();
-  void init_low_inf();
-  void init_low_lp();
+  void init_inf_low();
+  void init_lp_low();
 
   /// 在线阶段
   void msg();
-  void msg_low_inf_improve();
-  void msg_low_lp();
+  void msg_inf_low();
+  void msg_lp_low();
 
-  // 计时器
   // 计时器
   simpleTimer recvTimer;
 

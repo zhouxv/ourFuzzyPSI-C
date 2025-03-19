@@ -18,10 +18,10 @@
 #include "util.h"
 
 /// 离线阶段
-void FPSISender::init() { (METRIC == 0) ? init_low_inf() : init_low_lp(); }
+void FPSISender::init() { (METRIC == 0) ? init_inf_low() : init_lp_low(); }
 
 /// 离线阶段 低维无穷范数
-void FPSISender::init_low_inf() {
+void FPSISender::init_inf_low() {
   ipcl::initializeContext("QAT");
   ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
 
@@ -65,7 +65,7 @@ void FPSISender::init_low_inf() {
 }
 
 /// 离线阶段 低维Lp范数
-void FPSISender::init_low_lp() {
+void FPSISender::init_lp_low() {
 
   PRNG prng((block(oc::sysRandomSeed())));
 
@@ -156,10 +156,10 @@ void FPSISender::init_low_lp() {
 }
 
 /// 在线阶段
-void FPSISender::msg() { (METRIC == 0) ? msg_low_inf_improve() : msg_low_lp(); }
+void FPSISender::msg() { (METRIC == 0) ? msg_inf_low() : msg_lp_low(); }
 
 /// 在线阶段 低维无穷范数, 多线程 OKVS
-void FPSISender::msg_low_inf_improve() {
+void FPSISender::msg_inf_low() {
   /*--------------------------------------------------------------------------------------------------------------------------------*/
   // OKVS Encoding 的接收
   /*--------------------------------------------------------------------------------------------------------------------------------*/
@@ -280,7 +280,7 @@ void FPSISender::msg_low_inf_improve() {
 }
 
 /// 在线阶段 低维Lp范数, 多线程 OKVS
-void FPSISender::msg_low_lp() {
+void FPSISender::msg_lp_low() {
   simpleTimer timer;
   /*--------------------------------------------------------------------------------------------------------------------------------*/
   // OKVS Encoding 的接收

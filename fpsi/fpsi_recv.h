@@ -38,10 +38,9 @@ public:
   vector<RBOKVS> rb_okvs_vec;
 
   // 预计算的密文
-  vector<vector<block>> pre_ciphers;
-  vector<vector<block>> lp_value_pre_ciphers;
-  vector<vector<vector<block>>> inf_value_pre_ciphers;
-  vector<vector<block>> if_match_value_pre_ciphers;
+  vector<vector<vector<block>>> inf_value_pre_ciphers; // L_inf使用
+  vector<vector<block>> lp_value_pre_ciphers;          // L_p getList 使用
+  vector<vector<block>> if_match_value_pre_ciphers;    // L_p if match使用
 
   // 构造函数
   FPSIRecv(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
@@ -62,13 +61,13 @@ public:
 
   /// offline
   void init();
-  void init_inf_improve();
-  void init_lp();
+  void init_inf_low();
+  void init_lp_low();
 
   /// online
   void msg();
-  void msg_low_inf_improve();
-  void msg_low_lp();
+  void msg_inf_low();
+  void msg_lp_low();
 
   // 计时器
   simpleTimer recvTimer;
