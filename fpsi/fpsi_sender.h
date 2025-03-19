@@ -1,6 +1,5 @@
 #pragma once
 #include "params_selects.h"
-#include "rb_okvs.h"
 #include "util.h"
 
 #include <coproto/Socket/LocalAsyncSock.h>
@@ -50,6 +49,20 @@ public:
         THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk), sockets(sockets) {
     // 参数初始化
     OMEGA_PARAM = get_omega_params(metric, delta);
+    if (metric != 0)
+      IF_MATCH_PARAM = get_if_match_params(metric, delta);
+    SIDE_LEN = 2 * delta;
+    BLK_CELLS = 1 << dim;
+    DELTA_L2 = delta * delta;
+  };
+
+  FPSISender(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
+             vector<pt> &pts, ipcl::PublicKey pk, ipcl::PrivateKey sk,
+             OmegaUTable::ParamType param,
+             vector<coproto::LocalAsyncSocket> &sockets)
+      : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
+        THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk), OMEGA_PARAM(param),
+        sockets(sockets) {
     if (metric != 0)
       IF_MATCH_PARAM = get_if_match_params(metric, delta);
     SIDE_LEN = 2 * delta;

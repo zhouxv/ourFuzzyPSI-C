@@ -60,6 +60,25 @@ public:
     OKVS_SIZE = pt_num * BLK_CELLS * OMEGA_PARAM.second;
   };
 
+  // 构造函数
+  // 指定 PARAM
+  FPSIRecv(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
+           vector<pt> &pts, ipcl::PublicKey pk, ipcl::PrivateKey sk,
+           OmegaUTable::ParamType omega,
+           vector<coproto::LocalAsyncSocket> &sockets)
+      : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
+        THREAD_NUM(thread_num), pts(pts), pk(pk), OMEGA_PARAM(omega), sk(sk),
+        sockets(sockets) {
+    // 参数初始化
+    if (metric != 0)
+      IF_MATCH_PARAM = get_if_match_params(metric, delta);
+    SIDE_LEN = 2 * delta;
+    BLK_CELLS = 1 << dim;
+    DELTA_L2 = delta * delta;
+    OKVS_COUNT = (metric == 0) ? dim : 2 * dim;
+    OKVS_SIZE = pt_num * BLK_CELLS * OMEGA_PARAM.second;
+  };
+
   /// offline
   void init();
   void init_inf_improve();
