@@ -86,17 +86,6 @@ void FPSISender::init_lp_low() {
     }
   }
 
-  // 计算随机数和的哈希
-  // blake3_hasher hasher;
-  // block hash_out;
-  // random_hashes.reserve(PTS_NUM);
-  // for (u64 i = 0; i < PTS_NUM; i++) {
-  //   blake3_hasher_init(&hasher);
-  //   blake3_hasher_update(&hasher, &random_sums[i], sizeof(u64));
-  //   blake3_hasher_finalize(&hasher, hash_out.data(), 16);
-  //   random_hashes.push_back(hash_out);
-  // }
-
   ipcl::initializeContext("QAT");
   ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
 
@@ -124,35 +113,33 @@ void FPSISender::init_lp_low() {
   ipcl::PlainText plain = ipcl::PlainText(ep_bns);
   lp_pre_ciphers = pk.encrypt(plain);
 
-  ipcl::terminateContext();
-
   spdlog::info("sender 计算 diff(e^p)密文完成");
 
   // if match pre
-  //
-  u64 if_match_count = PTS_NUM * IF_MATCH_PARAM.second;
-  vector<u64> if_macth_randoms(if_match_count, 0);
-  vector<BigNumber> if_match_bns(if_match_count, 0);
-  for (u64 i = 0; i < if_match_count; i++) {
-    if_macth_randoms[i] = prng.get<u64>();
-    if_match_bns[i] =
-        BigNumber(reinterpret_cast<Ipp32u *>(&if_macth_randoms[i]), 2);
+  // 零密文准备
+  auto if_match_param_omega = IF_MATCH_PARAM.second;
+  u64 if_match_size = PTS_NUM * if_match_param_omega;
+
+  vector<u32> vec_zero_cipher(if_match_param_omega, 0);
+  ipcl::PlainText pt_zero = ipcl::PlainText(vec_zero_cipher);
+  ipcl::CipherText ct_zero = if_match_pk.encrypt(pt_zero);
+
+  vector<vector<block>> ct_zero_blocks;
+  ct_zero_blocks.reserve(if_match_param_omega);
+  for (u64 j = 0; j < if_match_param_omega; j++) {
+    ct_zero_blocks.push_back(bignumer_to_block_vector(ct_zero.getElement(j)));
   }
 
-  if_match_random_ciphers = pk.encrypt(ipcl::PlainText(if_match_bns));
-
-  if_match_random_hashes.reserve(if_match_count);
-
-  blake3_hasher hasher;
-  block hash_out;
-  for (u64 i = 0; i < if_match_count; i++) {
-    blake3_hasher_init(&hasher);
-    blake3_hasher_update(&hasher, &if_macth_randoms[i], sizeof(u64));
-    blake3_hasher_finalize(&hasher, hash_out.data(), 16);
-    if_match_random_hashes.push_back(hash_out);
+  lp_if_match_pre_ciphers.resize(if_match_size);
+  for (u64 i = 0; i < PTS_NUM; i++) {
+    for (u64 j = 0; j < if_match_param_omega; j++) {
+      lp_if_match_pre_ciphers[i * if_match_param_omega + j] = ct_zero_blocks[j];
+    }
   }
 
   spdlog::info("sender if match 预计算完成");
+
+  ipcl::terminateContext();
 }
 
 /// 在线阶段
@@ -281,7 +268,7 @@ void FPSISender::msg_inf_low() {
 
 /// 在线阶段 低维Lp范数, 多线程 OKVS
 void FPSISender::msg_lp_low() {
-  simpleTimer timer;
+  simpleTimer lp_timer;
   /*--------------------------------------------------------------------------------------------------------------------------------*/
   // OKVS Encoding 的接收
   /*--------------------------------------------------------------------------------------------------------------------------------*/
@@ -426,7 +413,7 @@ void FPSISender::msg_lp_low() {
     merge_timer(get_value_lp_timer);
   };
 
-  timer.start();
+  lp_timer.start();
   // 启动线程
   for (u64 t = 0; t < THREAD_NUM; t++) {
     get_value_lp_ths.emplace_back(get_value_lp, t);
@@ -436,72 +423,94 @@ void FPSISender::msg_lp_low() {
   for (auto &th : get_value_lp_ths) {
     th.join();
   }
-  timer.end("send_get_value_lp");
+  lp_timer.end("send_get_value_lp");
 
   /*--------------------------------------------------------------------------------------------------------------------------------*/
   // if_match sender
   /*--------------------------------------------------------------------------------------------------------------------------------*/
 
-  u64 if_match_mN;
-  u64 if_match_mSize;
-
-  coproto::sync_wait(sockets[0].flush());
-  coproto::sync_wait(sockets[0].recv(if_match_mN));
-  coproto::sync_wait(sockets[0].recv(if_match_mSize));
-
-  vector<vector<block>> if_match_encoding(
-      if_match_mSize, vector<block>(PAILLIER_CIPHER_SIZE_IN_BLOCK));
-
-  for (u64 i = 0; i < if_match_mSize; i++) {
-    coproto::sync_wait(sockets[0].recvResize(if_match_encoding[i]));
-  }
-
-  spdlog::info("sender if_match okvs encoding 接收完成");
-
+  u64 if_match_okvs_N = IF_MATCH_PARAM.second * PTS_NUM;
   RBOKVS if_match_okvs;
-  if_match_okvs.init(if_match_mN, OKVS_EPSILON, OKVS_LAMBDA, OKVS_SEED);
+  if_match_okvs.init(if_match_okvs_N, OKVS_EPSILON, OKVS_LAMBDA, OKVS_SEED);
+  u64 if_match_okvs_size = if_match_okvs.mSize;
 
-  //
-  u64 decode_count = PTS_NUM * IF_MATCH_PARAM.second;
-  vector<BigNumber> if_match_decode_ciphers;
-  if_match_decode_ciphers.reserve(decode_count);
+  vector<block> if_match_keys;
+  if_match_keys.reserve(if_match_okvs_N);
 
-  timer.start();
+  lp_timer.start();
   u64 e_p = fast_pow(DELTA, METRIC);
   for (auto &sum : random_sums) {
     auto decs = set_dec(sum, sum + e_p, IF_MATCH_PARAM.first);
     auto decs_keys = get_keys_from_dec(decs);
-    for (auto &decs_key : decs_keys) {
-      if_match_decode_ciphers.push_back(
-          block_vector_to_bignumer(if_match_okvs.decode(
-              if_match_encoding, decs_key, PAILLIER_CIPHER_SIZE_IN_BLOCK)));
-    }
+
+    if_match_keys.insert(if_match_keys.end(),
+                         std::make_move_iterator(decs_keys.begin()),
+                         std::make_move_iterator(decs_keys.end()));
   }
 
-  padding_bignumers(if_match_decode_ciphers, decode_count,
-                    PAILLIER_CIPHER_SIZE_IN_BLOCK);
+  padding_keys(if_match_keys, if_match_okvs_N);
+  lp_timer.end("sender_if_match_get_keys");
+  spdlog::info("sender if match get keys 完成");
 
-  timer.end("send_if_match_okvs_decoding");
-  spdlog::info("sender if_match okvs decoding 完成");
+  lp_timer.start();
+  vector<vector<block>> if_match_encoding(
+      if_match_okvs_size, vector<block>(PAILLIER_CIPHER_SIZE_IN_BLOCK));
 
-  timer.start();
-  auto if_match_res =
-      ipcl::CipherText(pk, if_match_decode_ciphers) + if_match_random_ciphers;
-  timer.end("send_if_match_ciphers");
+  if_match_okvs.encode(if_match_keys, lp_if_match_pre_ciphers,
+                       PAILLIER_CIPHER_SIZE_IN_BLOCK, if_match_encoding);
+  lp_timer.end("sender_if_match_encoding");
+  spdlog::info("sender if match encoding 完成");
 
   coproto::sync_wait(sockets[0].flush());
-  coproto::sync_wait(sockets[0].send(decode_count));
-  for (u64 i = 0; i < decode_count; i++) {
-    coproto::sync_wait(
-        sockets[0].send(bignumer_to_block_vector(if_match_res.getElement(i))));
+  coproto::sync_wait(sockets[0].send(if_match_okvs_N));
+  coproto::sync_wait(sockets[0].send(if_match_okvs_size));
+
+  for (u64 i = 0; i < if_match_okvs_size; i++) {
+    coproto::sync_wait(sockets[0].send(if_match_encoding[i]));
   }
-  insert_commus("sender_0_if_match_cipers", 0);
-  spdlog::info("sender if match 密文发送完成");
+  insert_commus("sender_if_match_encoding", 0);
+
+  u64 if_match_count = 0;
+  coproto::sync_wait(sockets[0].flush());
+  coproto::sync_wait(sockets[0].recv(if_match_count));
+
+  vector<vector<block>> if_match_add_cipher(if_match_count);
+
+  for (u64 i = 0; i < if_match_count; i++) {
+    coproto::sync_wait(sockets[0].recvResize(if_match_add_cipher[i]));
+  }
+  spdlog::info("sender if match add ciphers 接收完成");
+
+  vector<BigNumber> decrypt_res;
+  decrypt_res.reserve(if_match_count);
+  for (u64 i = 0; i < if_match_count; i++) {
+    decrypt_res.push_back(block_vector_to_bignumer(if_match_add_cipher[i]));
+  }
+
+  lp_timer.start();
+  auto add_cipher_dec =
+      if_match_sk.decrypt(ipcl::CipherText(if_match_pk, decrypt_res));
+  lp_timer.end("sender_if_match_add_decrypt");
+  spdlog::info("sender if match add decrypt 解密完成");
+
+  vector<block> add_hashes;
+  add_hashes.reserve(if_match_count);
+
+  blake3_hasher hasher;
+  block hash_out;
+  for (u64 i = 0; i < if_match_count; i++) {
+    auto tmp = add_cipher_dec.getElementVec(i);
+    auto tmp_value = ((u64)tmp[1] << 32) | tmp[0];
+    blake3_hasher_init(&hasher);
+    blake3_hasher_update(&hasher, &tmp_value, sizeof(u64));
+    blake3_hasher_finalize(&hasher, hash_out.data(), 16);
+    add_hashes.push_back(hash_out);
+  }
 
   coproto::sync_wait(sockets[0].flush());
-  coproto::sync_wait(sockets[0].send(if_match_random_hashes));
-  insert_commus("sender_0_if_match_hashes", 0);
-  spdlog::info("sender if match 哈希发送完成");
+  coproto::sync_wait(sockets[0].send(add_hashes));
+  insert_commus("sender_if_match_hashes", 0);
+  spdlog::info("sender if match hashes 发送完成");
 
-  merge_timer(timer);
+  merge_timer(lp_timer);
 }

@@ -4,7 +4,10 @@
 #include "util.h"
 
 #include <coproto/Socket/LocalAsyncSock.h>
+#include <ipcl/bignum.h>
+#include <ipcl/ciphertext.hpp>
 #include <ipcl/ipcl.hpp>
+#include <ipcl/pub_key.hpp>
 #include <vector>
 
 class FPSIRecv {
@@ -19,6 +22,7 @@ public:
   // 一些核心对象的引用
   vector<pt> &pts; // 点集
   const ipcl::PublicKey pk;
+  const ipcl::PublicKey if_match_pk;
   const ipcl::PrivateKey sk;
   vector<coproto::LocalAsyncSocket> &sockets;
 
@@ -40,16 +44,37 @@ public:
   // 预计算的密文
   vector<vector<vector<block>>> inf_value_pre_ciphers; // L_inf使用
   vector<vector<block>> lp_value_pre_ciphers;          // L_p getList 使用
-  vector<vector<block>> if_match_value_pre_ciphers;    // L_p if match使用
+
+  ipcl::CipherText if_match_random_ciphers; // L_p if match使用
+  vector<block> if_match_random_hashes;     // L_p if match使用
 
   // 构造函数
   FPSIRecv(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
            vector<pt> &pts, ipcl::PublicKey pk, ipcl::PrivateKey sk,
+           ipcl::PublicKey if_match_pk,
            vector<coproto::LocalAsyncSocket> &sockets)
       : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
-        THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk), sockets(sockets) {
+        THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk),
+        if_match_pk(if_match_pk), sockets(sockets) {
     // 参数初始化
     OMEGA_PARAM = get_omega_params(metric, delta);
+    if (metric != 0)
+      IF_MATCH_PARAM = get_if_match_params(metric, delta);
+    SIDE_LEN = 2 * delta;
+    BLK_CELLS = 1 << dim;
+    DELTA_L2 = delta * delta;
+    OKVS_COUNT = (metric == 0) ? dim : 2 * dim;
+    OKVS_SIZE = pt_num * BLK_CELLS * OMEGA_PARAM.second;
+  };
+
+  // 构造函数
+  FPSIRecv(u64 dim, u64 delta, u64 pt_num, u64 metric,
+           OmegaUTable::ParamType param, u64 thread_num, vector<pt> &pts,
+           ipcl::PublicKey pk, ipcl::PrivateKey sk, ipcl::PublicKey if_match_pk,
+           vector<coproto::LocalAsyncSocket> &sockets)
+      : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
+        OMEGA_PARAM(param), THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk),
+        if_match_pk(if_match_pk), sockets(sockets) {
     if (metric != 0)
       IF_MATCH_PARAM = get_if_match_params(metric, delta);
     SIDE_LEN = 2 * delta;
