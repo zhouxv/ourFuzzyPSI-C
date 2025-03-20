@@ -253,7 +253,7 @@ void test_low_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
     for (auto it = recv_com.begin(); it != recv_com.end(); it++) {
       total_com += it->second;
     }
-    for (auto it = recv_com.begin(); it != recv_com.end(); it++) {
+    for (auto it = sender_com.begin(); it != sender_com.end(); it++) {
       total_com += it->second;
     }
 
