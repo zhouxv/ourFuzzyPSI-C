@@ -12,6 +12,8 @@ void test_decompose_correction(CLP &cmd);
 void test_all_psi_params(CLP &cmd);
 void test_if_match_params(CLP &cmd);
 
+void test_low_bound(CLP &cmd);
+
 bool validate_prefix_tree(const std::vector<std::string> &prefixes,
                           osuCrypto::u64 bits, osuCrypto::u64 target_min,
                           osuCrypto::u64 target_max);

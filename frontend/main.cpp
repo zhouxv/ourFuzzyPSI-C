@@ -66,6 +66,9 @@ int main(int argc, char **argv) {
     case 6:
       test_u64_random(cmd);
       return 0;
+    case 7:
+      test_low_bound(cmd);
+      return 0;
     }
   }
 

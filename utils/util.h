@@ -195,6 +195,19 @@ inline block get_key_from_dim_dec(const u64 &dim, const string &dec,
   return hash_out;
 }
 
+/// 获取 OKVS 的 key, inf
+inline block get_key_from_dim_dec(const u64 &dim, const string &dec) {
+  blake3_hasher hasher;
+  block hash_out;
+  blake3_hasher_init(&hasher);
+  blake3_hasher_update(&hasher, &dim, sizeof(dim));
+  blake3_hasher_update(&hasher, dec.data(), dec.size());
+
+  blake3_hasher_finalize(&hasher, hash_out.data(), 16);
+
+  return hash_out;
+}
+
 /// 获取 OKVS 的 key, Lp
 inline block get_key_from_dim_sigma_dec(const u64 &dim, const u64 &sigma,
                                         const string &dec,

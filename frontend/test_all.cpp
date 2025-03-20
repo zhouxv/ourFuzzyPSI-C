@@ -339,6 +339,25 @@ void test_u64_random(CLP &cmd) {
   ipcl::terminateContext();
 }
 
+// 测试
+void test_low_bound(CLP &cmd) {
+  vector<pair<u64, u64>> points = {{1, 2}, {3, 4}, {5, 6}, {7, 8}, {654, 9595}};
+
+  u64 value = cmd.getOr("v", 3);
+
+  auto it =
+      lower_bound(points.begin(), points.end(), value,
+                  [](const pair<u64, u64> &a, u64 value) {
+                    return a.second < value; // 寻找第一个second<=value的区间
+                  });
+
+  if (it != points.end() && it->first <= value) {
+    cout << "找到点: (" << it->first << ", " << it->second << ")" << endl;
+  } else {
+    cout << "未找到合适的点" << endl;
+  }
+}
+
 // 将二进制前缀转换为区间 [min, max]
 std::pair<u64, u64> prefix_to_range(const std::string &prefix, u64 bits) {
   u64 min_val = 0, max_val = 0;
