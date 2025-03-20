@@ -188,6 +188,7 @@ void test_low_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
     // palliar公私钥
     ipcl::initializeContext("QAT");
     ipcl::KeyPair paillier_key = ipcl::generateKeypair(2048, true);
+    ipcl::KeyPair if_match_key = ipcl::generateKeypair(2048, true);
     ipcl::terminateContext();
 
     // 本地网络通信初始化
@@ -201,11 +202,11 @@ void test_low_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
 
     // 接收方和发送方初始化
     FPSIRecv recv(DIM, DELTA, recv_size, METRIC, 1, recv_pts,
-                  paillier_key.pub_key, paillier_key.priv_key, param,
-                  socketPair0);
+                  paillier_key.pub_key, paillier_key.priv_key,
+                  if_match_key.pub_key, socketPair0);
     FPSISender sender(DIM, DELTA, send_size, METRIC, 1, send_pts,
-                      paillier_key.pub_key, paillier_key.priv_key, param,
-                      socketPair1);
+                      paillier_key.pub_key, if_match_key.pub_key,
+                      if_match_key.priv_key, socketPair1);
 
     // offline
     timer.start();

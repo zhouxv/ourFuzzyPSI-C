@@ -73,8 +73,8 @@ public:
            ipcl::PublicKey pk, ipcl::PrivateKey sk, ipcl::PublicKey if_match_pk,
            vector<coproto::LocalAsyncSocket> &sockets)
       : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
-        OMEGA_PARAM(param), THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk),
-        if_match_pk(if_match_pk), sockets(sockets) {
+        THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk),
+        if_match_pk(if_match_pk), OMEGA_PARAM(param), sockets(sockets) {
     if (metric != 0)
       IF_MATCH_PARAM = get_if_match_params(metric, delta);
     SIDE_LEN = 2 * delta;

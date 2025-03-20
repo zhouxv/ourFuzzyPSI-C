@@ -59,14 +59,13 @@ public:
     DELTA_L2 = delta * delta;
   };
 
-  FPSISender(u64 dim, u64 delta, u64 pt_num, u64 metric,
-             OmegaUTable::ParamType param, u64 thread_num, vector<pt> &pts,
-             ipcl::PublicKey pk, ipcl::PublicKey if_match_pk,
-             ipcl::PrivateKey if_match_sk,
+  FPSISender(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
+             vector<pt> &pts, ipcl::PublicKey pk, ipcl::PublicKey if_match_pk,
+             ipcl::PrivateKey if_match_sk, OmegaUTable::ParamType param,
              vector<coproto::LocalAsyncSocket> &sockets)
       : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
-        OMEGA_PARAM(param), THREAD_NUM(thread_num), pts(pts), pk(pk),
-        if_match_pk(if_match_pk), if_match_sk(if_match_sk), sockets(sockets) {
+        THREAD_NUM(thread_num), pts(pts), pk(pk), if_match_pk(if_match_pk),
+        if_match_sk(if_match_sk), OMEGA_PARAM(param), sockets(sockets) {
     // 参数初始化
     if (metric != 0)
       IF_MATCH_PARAM = get_if_match_params(metric, delta);
