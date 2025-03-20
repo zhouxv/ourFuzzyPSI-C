@@ -1,6 +1,5 @@
 #pragma once
 #include "params_selects.h"
-#include "rb_okvs.h"
 #include "util.h"
 
 #include <coproto/Socket/LocalAsyncSock.h>
