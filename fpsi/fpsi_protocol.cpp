@@ -168,6 +168,8 @@ void test_low_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
   vector<pt> send_pts(send_size, vector<u64>(DIM, 0));
 
   vector<double> time_sums(trait, 0);
+  vector<double> sender_offline_time_sums(trait, 0);
+  vector<double> recv_offline_time_sums(trait, 0);
   vector<u64> comm_sums(trait, 0);
   u64 psaa_count = 0;
 
@@ -248,6 +250,8 @@ void test_low_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
     if (recv.psi_ca_result == intersection_size)
       psaa_count += 1;
 
+    auto recv_offline_timer = timer.get_by_key("recv_init");
+    auto sender_offline_timer = timer.get_by_key("sender_init");
     auto online_time = timer.get_by_key("protocol_online");
 
     auto recv_com = recv.commus;
@@ -261,6 +265,8 @@ void test_low_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
       total_com += it->second;
     }
 
+    recv_offline_time_sums[i] = recv_offline_timer;
+    sender_offline_time_sums[i] = sender_offline_timer;
     time_sums[i] = online_time;
     comm_sums[i] = total_com;
   }
@@ -270,11 +276,24 @@ void test_low_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
        << endl;
 
   for (u64 i = 0; i < trait; i++) {
-    cout << std::format("{} {} ms, {} s, {} bytes , {} MB", i, time_sums[i],
-                        time_sums[i] / 1000.0, comm_sums[i],
-                        comm_sums[i] / 1024.0 / 1024.0)
+    cout << std::format("{} 离线 recv: {} ms, 离线sender: {} ms, 在线时间: {}, "
+                        "通信: {} 字节",
+                        i, recv_offline_time_sums[i],
+                        sender_offline_time_sums[i], time_sums[i], comm_sums[i])
          << endl;
   }
+
+  double avg_offline_recv_total =
+      accumulate(recv_offline_time_sums.begin(), recv_offline_time_sums.end(),
+                 0.0) /
+      trait;
+
+  double avg_offline_sender_total =
+      accumulate(sender_offline_time_sums.begin(),
+                 sender_offline_time_sums.end(), 0.0) /
+      trait;
+
+  double avg_offline_total = avg_offline_recv_total + avg_offline_sender_total;
 
   double avg_online_time =
       accumulate(time_sums.begin(), time_sums.end(), 0.0) / trait;
@@ -284,6 +303,21 @@ void test_low_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
   cout << std::format("平均: {} ms, {} s, {} bytes , {} MB, 通过数: {} / {}",
                       avg_online_time, avg_online_time / 1000.0, avg_com,
                       avg_com / 1024.0 / 1024.0, psaa_count, trait)
+       << endl;
+
+  cout << std::format("平均: 离线 recv: {} ms, 离线sender: {} ms, 离线总时间: "
+                      "{} ms, 在线时间: {}, "
+                      "通信  {} MB, 通过数: {} / {}",
+                      avg_offline_recv_total, avg_offline_sender_total,
+                      avg_offline_total, avg_online_time,
+                      avg_com / 1024.0 / 1024.0, psaa_count, trait)
+       << endl;
+
+  cout << std::format("{} {} {} {} {}  {}/{}", avg_offline_recv_total,
+                      avg_offline_sender_total, avg_offline_total,
+                      avg_online_time, avg_com / 1024.0 / 1024.0, psaa_count,
+                      trait)
+       << endl
        << endl;
 
   return;
