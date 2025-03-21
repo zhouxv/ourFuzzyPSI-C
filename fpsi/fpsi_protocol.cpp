@@ -127,8 +127,9 @@ void test_low_dimension(const oc::CLP &cmd) {
     for (auto del : deltas) {
 
       auto new_logger = spdlog::basic_logger_mt(
-          std::format("logger_2_{}_{}", m, del),
-          std::format("all_params_2_{}_{}.txt", m, del), true);
+          std::format("logger_{}_2_{}_{}", 1ull << logr, m, del),
+          std::format("n-{}_dim-2_m-{}_delta-{}.txt", 1ull << logr, m, del),
+          true);
       spdlog::set_default_logger(new_logger);
 
       auto t = (m == 0) ? (del * 2 + 1) : (del + 1);
@@ -147,7 +148,7 @@ void test_low_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
   const u64 DIM = 2;
   const u64 recv_size = 1ull << logr;
   const u64 send_size = 1ull << logs;
-  const u64 intersection_size = 25;
+  const u64 intersection_size = logr;
 
   if ((intersection_size > recv_size) | (intersection_size > send_size)) {
     spdlog::error("intersection_size should not be greater than set_size");
