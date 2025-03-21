@@ -159,11 +159,11 @@ void FPSISender::msg_inf_low() {
   coproto::sync_wait(sockets[0].recv(mN));
   coproto::sync_wait(sockets[0].recv(mSize));
 
+  coproto::sync_wait(sockets[0].flush());
+
   vector<vector<vector<block>>> encodings(
       okvs_count, vector<vector<block>>(
                       mSize, vector<block>(PAILLIER_CIPHER_SIZE_IN_BLOCK)));
-
-  coproto::sync_wait(sockets[0].flush());
 
   for (u64 i = 0; i < okvs_count; i++) {
     for (u64 j = 0; j < mSize; j++) {
@@ -276,18 +276,19 @@ void FPSISender::msg_lp_low() {
   u64 mN;
   u64 mSize;
   u64 value_block_length = PAILLIER_CIPHER_SIZE_IN_BLOCK * METRIC;
+  cout << std::format("okvs_count {}, mN {}, mSize {}, value_block_lengt {}",
+                      okvs_count, mN, mSize, value_block_length)
+       << endl;
 
   coproto::sync_wait(sockets[0].flush());
   coproto::sync_wait(sockets[0].recv(okvs_count));
   coproto::sync_wait(sockets[0].recv(mN));
   coproto::sync_wait(sockets[0].recv(mSize));
 
+  coproto::sync_wait(sockets[0].flush());
   vector<vector<vector<block>>> encodings(
       okvs_count,
       vector<vector<block>>(mSize, vector<block>(value_block_length)));
-
-  coproto::sync_wait(sockets[0].flush());
-
   for (u64 i = 0; i < okvs_count; i++) {
     for (u64 j = 0; j < mSize; j++) {
       coproto::sync_wait(sockets[0].recvResize(encodings[i][j]));

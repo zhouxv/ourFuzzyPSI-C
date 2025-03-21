@@ -175,20 +175,18 @@ void FPSIRecv::msg_inf_low() {
           keys.push_back(tmp);
         }
       }
-      // spdlog::debug("pt {} cells {} decs {}", i, cells.size(), decs.size());
     }
 
     // padding keys 到 pt_num * blk_cells * param.second
     padding_keys(keys, okvs_mSize);
+
     get_list_inf_timer.end(std::format("recv_{}_get_list", thread_index));
-    spdlog::debug(std::format("recv {} get list 完成", thread_index));
 
     get_list_inf_timer.start();
     rb_okvs_vec[thread_index].encode(keys, inf_value_pre_ciphers[thread_index],
                                      PAILLIER_CIPHER_SIZE_IN_BLOCK,
                                      encodings[thread_index]);
     get_list_inf_timer.end(std::format("recv_{}_encode", thread_index));
-    spdlog::debug(std::format("recv {} encode 完成", thread_index));
 
     merge_timer(get_list_inf_timer);
   };

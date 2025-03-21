@@ -8,7 +8,6 @@
 #include <cryptoTools/Crypto/PRNG.h>
 #include <ipcl/bignum.h>
 #include <spdlog/spdlog.h>
-#include <utility>
 #include <vector>
 
 using namespace oc;
@@ -41,7 +40,7 @@ public:
     }
   }
 
-  double get_by_key(string &key) { return timers.at(key); }
+  double get_by_key(const string &key) { return timers.at(key); }
 
   void merge(simpleTimer &other) {
     auto other_keys = other.timer_keys;

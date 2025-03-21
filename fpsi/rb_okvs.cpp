@@ -2,6 +2,7 @@
 
 #include "rb_okvs.h"
 #include "blake3.h"
+#include <format>
 #include <ipcl/bignum.h>
 #include <memory>
 #include <thread>
@@ -136,6 +137,8 @@ RBOKVSParam RBOKVS::getParams(const u64 &n, const double &epsilon,
     if (nn <= 10) {
       param.mBandWidth = std::min<u64>(
           static_cast<u64>((stasSecParam + 6.296) / 0.2747), param.numCols());
+      if (param.mBandWidth < 72)
+        param.mBandWidth = 72;
     } else if (nn <= 14) {
       param.mBandWidth = std::min<u64>(
           static_cast<u64>((stasSecParam + 9.339) / 0.2685), param.numCols());
