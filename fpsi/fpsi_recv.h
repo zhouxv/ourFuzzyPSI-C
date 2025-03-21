@@ -68,9 +68,9 @@ public:
   };
 
   // 构造函数
-  FPSIRecv(u64 dim, u64 delta, u64 pt_num, u64 metric,
-           OmegaUTable::ParamType param, u64 thread_num, vector<pt> &pts,
-           ipcl::PublicKey pk, ipcl::PrivateKey sk, ipcl::PublicKey if_match_pk,
+  FPSIRecv(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
+           vector<pt> &pts, ipcl::PublicKey pk, ipcl::PrivateKey sk,
+           ipcl::PublicKey if_match_pk, OmegaUTable::ParamType param,
            vector<coproto::LocalAsyncSocket> &sockets)
       : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
         THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk),
