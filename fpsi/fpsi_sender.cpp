@@ -488,6 +488,7 @@ void FPSISender::msg_lp_low() {
   lp_timer.start();
   auto add_cipher_dec =
       if_match_sk.decrypt(ipcl::CipherText(if_match_pk, decrypt_res));
+
   lp_timer.end("sender_if_match_add_decrypt");
   spdlog::info("sender if match add decrypt 解密完成");
 
@@ -499,6 +500,7 @@ void FPSISender::msg_lp_low() {
   for (u64 i = 0; i < if_match_count; i++) {
     auto tmp = add_cipher_dec.getElementVec(i);
     auto tmp_value = ((u64)tmp[1] << 32) | tmp[0];
+    spdlog::debug("tmp_value {}: {}", i, tmp_value);
     blake3_hasher_init(&hasher);
     blake3_hasher_update(&hasher, &tmp_value, sizeof(u64));
     blake3_hasher_finalize(&hasher, hash_out.data(), 16);
