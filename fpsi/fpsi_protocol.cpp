@@ -119,26 +119,25 @@ void test_low_dimension(const oc::CLP &cmd) {
   const u64 logr = cmd.getOr("r", 8);
   const u64 logs = cmd.getOr("s", 8);
   const u64 trait = cmd.getOr("trait", 50);
+  const u64 metric = cmd.getOr("m", 2);
 
-  vector<u64> metrics = {0, 1, 2};
+  // vector<u64> metrics = {0, 1, 2};
   vector<u64> deltas = {16, 32, 64, 128, 256};
 
-  for (auto m : metrics) {
-    for (auto del : deltas) {
+  for (auto del : deltas) {
 
-      auto new_logger = spdlog::basic_logger_mt(
-          std::format("logger_{}_2_{}_{}", 1ull << logr, m, del),
-          std::format("n-{}_dim-2_m-{}_delta-{}.txt", 1ull << logr, m, del),
-          true);
-      spdlog::set_default_logger(new_logger);
+    auto new_logger = spdlog::basic_logger_mt(
+        std::format("logger_{}_2_{}_{}", 1ull << logr, metric, del),
+        std::format("n-{}_dim-2_m-{}_delta-{}.txt", 1ull << logr, metric, del),
+        true);
+    spdlog::set_default_logger(new_logger);
 
-      auto t = (m == 0) ? (del * 2 + 1) : (del + 1);
+    auto t = (metric == 0) ? (del * 2 + 1) : (del + 1);
 
-      auto params = OmegaUTableALL::getSelectedParam(t);
+    auto params = OmegaUTableALL::getSelectedParam(t);
 
-      for (auto param : params)
-        test_low_dimension(del, m, logr, logs, trait, param);
-    }
+    for (auto param : params)
+      test_low_dimension(del, metric, logr, logs, trait, param);
   }
 }
 
@@ -165,111 +164,17 @@ void test_low_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
   spdlog::info("intersection_size : {}", intersection_size);
   spdlog::info("trait             : {}", trait);
 
-  vector<pt> recv_pts(recv_size, vector<u64>(DIM, 0));
-  vector<pt> send_pts(send_size, vector<u64>(DIM, 0));
-
   vector<double> time_sums(trait, 0);
   vector<double> sender_offline_time_sums(trait, 0);
   vector<double> recv_offline_time_sums(trait, 0);
   vector<u64> comm_sums(trait, 0);
-  u64 psaa_count = 0;
+  u64 pass_count = 0;
 
   for (u64 i = 0; i < trait; i++) {
-    spdlog::info("这是第 {} 个测试运行", i);
-    spdlog::info(
-        "--------------------- offline start ------------------------");
-
-    // 计时
-    simpleTimer timer;
-    timer.start();
-    sample_points(DIM, DELTA, send_size, recv_size, intersection_size, send_pts,
-                  recv_pts);
-    timer.end("pts_sample");
-
-    spdlog::info("双方 pt 集合采样完成");
-
-    // palliar公私钥
-    ipcl::initializeContext("QAT");
-    ipcl::KeyPair paillier_key = ipcl::generateKeypair(2048, true);
-    ipcl::KeyPair if_match_key = ipcl::generateKeypair(2048, true);
-    ipcl::terminateContext();
-
-    // 本地网络通信初始化
-    vector<coproto::LocalAsyncSocket> socketPair0, socketPair1;
-    for (u64 i = 0; i < 1; ++i) {
-      auto socketPair = coproto::LocalAsyncSocket::makePair();
-      socketPair0.push_back(socketPair[0]);
-      socketPair1.push_back(socketPair[1]);
-    }
-    spdlog::info("双方网络初始化完成");
-
-    // 接收方和发送方初始化
-    FPSIRecv recv(DIM, DELTA, recv_size, METRIC, 1, recv_pts,
-                  paillier_key.pub_key, paillier_key.priv_key,
-                  if_match_key.pub_key, socketPair0);
-    FPSISender sender(DIM, DELTA, send_size, METRIC, 1, send_pts,
-                      paillier_key.pub_key, if_match_key.pub_key,
-                      if_match_key.priv_key, socketPair1);
-
-    // offline
-    timer.start();
-    recv.init();
-    timer.end("recv_init");
-    spdlog::info("recv setup完成");
-
-    timer.start();
-    sender.init();
-    timer.end("sender_init");
-    spdlog::info("sender setup完成");
-
-    spdlog::info(
-        "----------------------- online start ------------------------");
-
-    timer.start();
-    // 使用 std::bind 将成员函数和对象绑定
-    std::thread recv_msg(std::bind(&FPSIRecv::msg, &recv));
-    std::thread send_msg(std::bind(&FPSISender::msg, &sender));
-
-    recv_msg.join();
-    send_msg.join();
-    timer.end("protocol_online");
-    spdlog::info(
-        "-------------------- output preformance ---------------------");
-
-    spdlog::info("intersection size : {}", recv.psi_ca_result);
-
-    timer.print();
-    spdlog::info("");
-    recv.print_time();
-    spdlog::info("");
-    sender.print_time();
-    spdlog::info("");
-    recv.print_commus();
-    spdlog::info("");
-    sender.print_commus();
-
-    if (recv.psi_ca_result == intersection_size)
-      psaa_count += 1;
-
-    auto recv_offline_timer = timer.get_by_key("recv_init");
-    auto sender_offline_timer = timer.get_by_key("sender_init");
-    auto online_time = timer.get_by_key("protocol_online");
-
-    auto recv_com = recv.commus;
-    auto sender_com = sender.commus;
-
-    auto total_com = 0;
-    for (auto it = recv_com.begin(); it != recv_com.end(); it++) {
-      total_com += it->second;
-    }
-    for (auto it = sender_com.begin(); it != sender_com.end(); it++) {
-      total_com += it->second;
-    }
-
-    recv_offline_time_sums[i] = recv_offline_timer;
-    sender_offline_time_sums[i] = sender_offline_timer;
-    time_sums[i] = online_time;
-    comm_sums[i] = total_com;
+    test_low_dimension_detail(DIM, DELTA, recv_size, METRIC, intersection_size,
+                              i, param, recv_offline_time_sums,
+                              sender_offline_time_sums, time_sums, comm_sums,
+                              pass_count);
   }
 
   cout << std::format("n_r: {} , n_s: {} , delta: {} , metric: {}, PARAM: {}",
@@ -303,7 +208,7 @@ void test_low_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
 
   cout << std::format("平均: {} ms, {} s, {} bytes , {} MB, 通过数: {} / {}",
                       avg_online_time, avg_online_time / 1000.0, avg_com,
-                      avg_com / 1024.0 / 1024.0, psaa_count, trait)
+                      avg_com / 1024.0 / 1024.0, pass_count, trait)
        << endl;
 
   cout << std::format("平均: 离线 recv: {} ms, 离线sender: {} ms, 离线总时间: "
@@ -311,15 +216,121 @@ void test_low_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
                       "通信  {} MB, 通过数: {} / {}",
                       avg_offline_recv_total, avg_offline_sender_total,
                       avg_offline_total, avg_online_time,
-                      avg_com / 1024.0 / 1024.0, psaa_count, trait)
+                      avg_com / 1024.0 / 1024.0, pass_count, trait)
        << endl;
 
   cout << std::format("{} {} {} {} {}  {}/{}", avg_offline_recv_total,
                       avg_offline_sender_total, avg_offline_total,
-                      avg_online_time, avg_com / 1024.0 / 1024.0, psaa_count,
+                      avg_online_time, avg_com / 1024.0 / 1024.0, pass_count,
                       trait)
        << endl
        << endl;
 
   return;
+}
+
+void test_low_dimension_detail(u64 DIM, u64 DELTA, u64 recv_size, u64 METRIC,
+                               u64 intersection_size, u64 index,
+                               const OmegaUTable::ParamType &param,
+                               vector<double> &recv_offline_time_sums,
+                               vector<double> &sender_offline_time_sums,
+                               vector<double> &time_sums,
+                               vector<u64> &comm_sums, u64 &pass_count) {
+
+  u64 send_size = recv_size;
+  spdlog::info("这是第 {} 个测试运行", index);
+  spdlog::info("--------------------- offline start ------------------------");
+
+  vector<pt> recv_pts(recv_size, vector<u64>(DIM, 0));
+  vector<pt> send_pts(send_size, vector<u64>(DIM, 0));
+
+  // 计时
+  simpleTimer timer;
+  timer.start();
+  sample_points(DIM, DELTA, send_size, recv_size, intersection_size, send_pts,
+                recv_pts);
+  timer.end("pts_sample");
+
+  spdlog::info("双方 pt 集合采样完成");
+
+  // palliar公私钥
+  ipcl::initializeContext("QAT");
+  ipcl::KeyPair paillier_key = ipcl::generateKeypair(2048, true);
+  ipcl::KeyPair if_match_key = ipcl::generateKeypair(2048, true);
+  ipcl::terminateContext();
+
+  // 本地网络通信初始化
+  vector<coproto::LocalAsyncSocket> socketPair0, socketPair1;
+  for (u64 i = 0; i < 1; ++i) {
+    auto socketPair = coproto::LocalAsyncSocket::makePair();
+    socketPair0.push_back(socketPair[0]);
+    socketPair1.push_back(socketPair[1]);
+  }
+  spdlog::info("双方网络初始化完成");
+
+  // 接收方和发送方初始化
+  FPSIRecv recv(DIM, DELTA, recv_size, METRIC, 1, recv_pts,
+                paillier_key.pub_key, paillier_key.priv_key,
+                if_match_key.pub_key, socketPair0);
+  FPSISender sender(DIM, DELTA, send_size, METRIC, 1, send_pts,
+                    paillier_key.pub_key, if_match_key.pub_key,
+                    if_match_key.priv_key, socketPair1);
+
+  // offline
+  timer.start();
+  recv.init();
+  timer.end("recv_init");
+  spdlog::info("recv setup完成");
+
+  timer.start();
+  sender.init();
+  timer.end("sender_init");
+  spdlog::info("sender setup完成");
+
+  spdlog::info("----------------------- online start ------------------------");
+
+  timer.start();
+  // 使用 std::bind 将成员函数和对象绑定
+  std::thread recv_msg(std::bind(&FPSIRecv::msg, &recv));
+  std::thread send_msg(std::bind(&FPSISender::msg, &sender));
+
+  recv_msg.join();
+  send_msg.join();
+  timer.end("protocol_online");
+  spdlog::info("-------------------- output preformance ---------------------");
+
+  spdlog::info("intersection size : {}", recv.psi_ca_result);
+
+  timer.print();
+  spdlog::info("");
+  recv.print_time();
+  spdlog::info("");
+  sender.print_time();
+  spdlog::info("");
+  recv.print_commus();
+  spdlog::info("");
+  sender.print_commus();
+
+  if (recv.psi_ca_result == intersection_size)
+    pass_count += 1;
+
+  auto recv_offline_timer = timer.get_by_key("recv_init");
+  auto sender_offline_timer = timer.get_by_key("sender_init");
+  auto online_time = timer.get_by_key("protocol_online");
+
+  auto recv_com = recv.commus;
+  auto sender_com = sender.commus;
+
+  auto total_com = 0;
+  for (auto it = recv_com.begin(); it != recv_com.end(); it++) {
+    total_com += it->second;
+  }
+  for (auto it = sender_com.begin(); it != sender_com.end(); it++) {
+    total_com += it->second;
+  }
+
+  recv_offline_time_sums[index] = recv_offline_timer;
+  sender_offline_time_sums[index] = sender_offline_timer;
+  time_sums[index] = online_time;
+  comm_sums[index] = total_com;
 }

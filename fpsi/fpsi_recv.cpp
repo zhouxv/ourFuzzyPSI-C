@@ -581,9 +581,9 @@ void FPSIRecv::msg_lp_low() {
   spdlog::info("recv if match ciphers 发送完成");
 
   vector<block> if_match_hashes;
-  coproto::sync_wait(sockets[0].flush());
   coproto::sync_wait(sockets[0].recvResize(if_match_hashes));
   spdlog::info("recv if match hashes 接收完成");
+  coproto::sync_wait(sockets[0].flush());
 
   u64 protocol_count = 0;
   for (auto tmp : if_match_hashes) {
