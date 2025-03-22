@@ -48,6 +48,15 @@ public:
   ipcl::CipherText if_match_random_ciphers; // L_p if match使用
   vector<block> if_match_random_hashes;     // L_p if match使用
 
+  ~FPSIRecv() {
+    pts.clear();
+    rb_okvs_vec.clear();
+    inf_value_pre_ciphers.clear();
+    lp_value_pre_ciphers.clear();
+    if_match_random_ciphers.clear();
+    if_match_random_hashes.clear();
+  }
+
   // 构造函数
   FPSIRecv(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
            vector<pt> &pts, ipcl::PublicKey pk, ipcl::PrivateKey sk,

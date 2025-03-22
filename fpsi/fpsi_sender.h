@@ -43,6 +43,15 @@ public:
   vector<u64> random_sums;                       // L_p if match 使用
   vector<vector<block>> lp_if_match_pre_ciphers; // L_p if match使用
 
+  ~FPSISender() {
+    pts.clear();
+    lp_pre_ciphers.clear();
+    random_hashes.clear();
+    random_ciphers.clear();
+    random_sums.clear();
+    lp_if_match_pre_ciphers.clear();
+  }
+
   FPSISender(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
              vector<pt> &pts, ipcl::PublicKey pk, ipcl::PublicKey if_match_pk,
              ipcl::PrivateKey if_match_sk,
