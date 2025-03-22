@@ -276,9 +276,6 @@ void FPSISender::msg_lp_low() {
   u64 mN;
   u64 mSize;
   u64 value_block_length = PAILLIER_CIPHER_SIZE_IN_BLOCK * METRIC;
-  cout << std::format("okvs_count {}, mN {}, mSize {}, value_block_lengt {}",
-                      okvs_count, mN, mSize, value_block_length)
-       << endl;
 
   coproto::sync_wait(sockets[0].flush());
   coproto::sync_wait(sockets[0].recv(okvs_count));
