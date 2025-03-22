@@ -1,12 +1,13 @@
 // authors: Xiang Liu, Yuanchao Luo, Longxin Wang
 #pragma once
+#include <vector>
 
-#include "util.h"
 #include <cryptoTools/Common/Defines.h>
 #include <cryptoTools/Common/Timer.h>
 #include <cryptoTools/Crypto/SodiumCurve.h>
 #include <ipcl/bignum.h>
-#include <vector>
+
+#include "util.h"
 
 #ifndef CRYPTOTOOLS_RBOKVS_H
 #define CRYPTOTOOLS_RBOKVS_H

@@ -46,6 +46,42 @@ public:
   }
 };
 
+class FuzzyMappingParamTable {
+public:
+  using ParamType = pair<set<u64>, u64>;
+
+  static const map<u64, ParamType> &getTable() {
+    static once_flag flag;
+    static map<u64, ParamType> params;
+
+    call_once(flag, []() {
+      params[17] = {{0, 1, 2, 3}, 5};
+
+      params[33] = {{0, 1, 2, 3, 4}, 6};
+
+      params[65] = {{0, 1, 2, 3, 4, 5}, 7};
+
+      params[129] = {{0, 1, 2, 3, 4, 5, 6}, 8};
+
+      params[257] = {{0, 1, 2, 3, 4, 5, 6, 7}, 9};
+
+      params[513] = {{0, 1, 2, 3, 4, 5, 6, 7, 8}, 10};
+    });
+
+    return params;
+  }
+
+  static ParamType getSelectedParam(u64 t) {
+    const auto &params = getTable();
+    auto it = params.find(t);
+    if (it != params.end())
+      return it->second;
+
+    throw std::out_of_range("getSelectedParam Invalid parameter key: " +
+                            std::to_string(t));
+  }
+};
+
 class IfMatchParamTable {
 public:
   using ParamType = pair<set<u64>, u64>;

@@ -1,25 +1,21 @@
-///////////////////////////
+#include <algorithm>
+#include <atomic>
+#include <format>
+#include <iterator>
+#include <thread>
+#include <vector>
+
+#include <cryptoTools/Common/Defines.h>
+#include <cryptoTools/Common/block.h>
+#include <ipcl/bignum.h>
+#include <ipcl/ciphertext.hpp>
+#include <ipcl/plaintext.hpp>
+#include <spdlog/spdlog.h>
 
 #include "fpsi_recv.h"
 #include "rb_okvs.h"
 #include "set_dec.h"
 #include "util.h"
-
-#include <algorithm>
-#include <atomic>
-#include <cryptoTools/Common/Defines.h>
-#include <format>
-#include <iterator>
-#include <spdlog/spdlog.h>
-#include <stdexcept>
-#include <thread>
-#include <utility>
-#include <vector>
-
-#include <cryptoTools/Common/block.h>
-#include <ipcl/bignum.h>
-#include <ipcl/ciphertext.hpp>
-#include <ipcl/plaintext.hpp>
 
 /// offline
 void FPSIRecv::init() { (METRIC == 0) ? init_inf_low() : init_lp_low(); }

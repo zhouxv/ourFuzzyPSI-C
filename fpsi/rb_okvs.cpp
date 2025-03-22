@@ -1,12 +1,12 @@
-// #include "cryptoTools/Common/CLP.h"
-
-#include "rb_okvs.h"
-#include "blake3.h"
 #include <format>
-#include <ipcl/bignum.h>
 #include <memory>
 #include <thread>
 #include <vector>
+
+#include "blake3.h"
+#include "rb_okvs.h"
+
+#include <ipcl/bignum.h>
 
 #define XOR(a, b)                                                              \
   for (u64 xor_cnt = 0; xor_cnt < VALUE_LENGTH_IN_BLOCK; xor_cnt++) {          \

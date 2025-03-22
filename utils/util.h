@@ -96,6 +96,8 @@ std::vector<block> bignumers_to_block_vector(const std::vector<BigNumber> &bns);
 std::vector<BigNumber>
 block_vector_to_bignumers(const std::vector<block> &ct, const u64 &value_size,
                           std::shared_ptr<BigNumber> nsq);
+std::vector<BigNumber> block_vector_to_bignumers(const std::vector<block> &ct,
+                                                 const u64 &value_size);
 
 /// 计算所有组合的和
 ///
@@ -103,7 +105,8 @@ block_vector_to_bignumers(const std::vector<block> &ct, const u64 &value_size,
 /// 值。函数生成所有可能的组合，并计算每个组合的和。
 ///
 /// # 参数
-/// - `results`: 一个包含多个 `Vec<u64>` 的向量，每个子向量代表一个维度的值。
+/// - `results`: 一个包含多个 `Vec<u64>`
+/// 的向量，每个子向量代表一个维度的值。
 ///
 /// # 返回
 /// 返回一个 `Vec<u64>`，其中每个元素是对应组合的和。

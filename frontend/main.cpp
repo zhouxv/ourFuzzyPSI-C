@@ -40,6 +40,9 @@ int main(int argc, char **argv) {
     case 1:
       run_low_dimension(cmd);
       return 0;
+    case 2:
+      run_high_dimension(cmd);
+      return 0;
     }
   }
 

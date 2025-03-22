@@ -334,6 +334,7 @@ bignumers_to_block_vector(const std::vector<BigNumber> &bns) {
   return cipher_block;
 }
 
+// 用于乘法
 std::vector<BigNumber>
 block_vector_to_bignumers(const std::vector<block> &ct, const u64 &value_size,
                           std::shared_ptr<BigNumber> nsq) {
@@ -353,6 +354,30 @@ block_vector_to_bignumers(const std::vector<block> &ct, const u64 &value_size,
     }
 
     bns.push_back(BigNumber(ct_u32.data(), ct_u32.size()) % (*nsq));
+  }
+
+  return bns;
+}
+
+// 加法就可以
+std::vector<BigNumber> block_vector_to_bignumers(const std::vector<block> &ct,
+                                                 const u64 &value_size) {
+  vector<BigNumber> bns;
+
+  std::vector<uint32_t> ct_u32(PAILLIER_CIPHER_SIZE_IN_BLOCK * 4, 0);
+
+  for (auto i = 0; i < value_size; i++) {
+    u32 temp[4];
+    u64 index = i * PAILLIER_CIPHER_SIZE_IN_BLOCK;
+    for (auto j = 0; j < PAILLIER_CIPHER_SIZE_IN_BLOCK; j++) {
+      memcpy(temp, ct[index + j].data(), 16);
+      ct_u32[4 * j] = temp[0];
+      ct_u32[4 * j + 1] = temp[1];
+      ct_u32[4 * j + 2] = temp[2];
+      ct_u32[4 * j + 3] = temp[3];
+    }
+
+    bns.push_back(BigNumber(ct_u32.data(), ct_u32.size()));
   }
 
   return bns;
