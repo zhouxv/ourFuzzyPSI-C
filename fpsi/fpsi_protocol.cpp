@@ -119,26 +119,33 @@ void test_low_dimension(const oc::CLP &cmd) {
   const u64 logr = cmd.getOr("r", 8);
   const u64 logs = cmd.getOr("s", 8);
   const u64 trait = cmd.getOr("trait", 50);
-  const u64 metric = cmd.getOr<u64>("m", 2);
+
+  const vector<u64> metrics = cmd.getManyOr<u64>("m", {0, 1, 2});
   const vector<u64> deltas =
       cmd.getManyOr<u64>("delta", {16, 32, 64, 128, 256});
+  const vector<u64> nums = cmd.getManyOr<u64>("size", {8, 12});
 
   // vector<u64> metrics = {0, 1, 2};
   // vector<u64> deltas = {16, 32, 64, 128, 256};
 
-  for (auto del : deltas) {
-    auto new_logger = spdlog::basic_logger_mt(
-        std::format("logger_{}_2_{}_{}", 1ull << logr, metric, del),
-        std::format("n-{}_dim-2_m-{}_delta-{}.txt", 1ull << logr, metric, del),
-        true);
-    spdlog::set_default_logger(new_logger);
+  for (auto num : nums) {
+    for (auto metric : metrics) {
+      for (auto del : deltas) {
+        auto new_logger = spdlog::basic_logger_mt(
+            std::format("logger_{}_2_{}_{}", 1ull << num, metric, del),
+            std::format("n-{}_dim-2_m-{}_delta-{}.txt", 1ull << num, metric,
+                        del),
+            true);
+        spdlog::set_default_logger(new_logger);
 
-    auto t = (metric == 0) ? (del * 2 + 1) : (del + 1);
+        auto t = (metric == 0) ? (del * 2 + 1) : (del + 1);
 
-    auto params = OmegaUTableALL::getSelectedParam(t);
+        auto params = OmegaUTableALL::getSelectedParam(t);
 
-    for (auto param : params)
-      test_low_dimension(del, metric, logr, logs, trait, param);
+        for (auto param : params)
+          test_low_dimension(del, metric, num, num, trait, param);
+      }
+    }
   }
 }
 
