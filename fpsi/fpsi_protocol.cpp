@@ -1,6 +1,6 @@
 #include "fpsi_protocol.h"
-
 #include "fpsi_recv.h"
+#include "fpsi_recv_high.h"
 #include "fpsi_sender.h"
 #include "params_selects.h"
 #include "util.h"

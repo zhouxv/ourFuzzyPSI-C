@@ -1,5 +1,6 @@
 #include "util.h"
 #include <cryptoTools/Common/Defines.h>
+#include <cryptoTools/Common/block.h>
 #include <cryptoTools/Crypto/PRNG.h>
 #include <random>
 
@@ -9,26 +10,24 @@ void sample_points(u64 dim, u64 delta, u64 send_size, u64 recv_size,
                    vector<pt> &recv_pts) {
   PRNG prng(oc::sysRandomSeed());
 
-  std::random_device dev;
-  std::mt19937_64 rng(dev());
-  std::uniform_int_distribution<u64> dist(0, numeric_limits<u64>::max());
-
   for (u64 i = 0; i < send_size; i++) {
     for (u64 j = 0; j < dim; j++) {
       send_pts[i][j] =
-          (dist(rng)) % ((0xffff'ffff'ffff'ffff) - 3 * delta) + 1.5 * delta;
+          (prng.get<u64>()) % ((0xffff'ffff'ffff'ffff) - 3 * delta) +
+          1.5 * delta;
     }
   }
 
   for (u64 i = 0; i < recv_size; i++) {
     for (u64 j = 0; j < dim; j++) {
       recv_pts[i][j] =
-          (dist(rng)) % ((0xffff'ffff'ffff'ffff) - 3 * delta) + 1.5 * delta;
+          (prng.get<u64>()) % ((0xffff'ffff'ffff'ffff) - 3 * delta) +
+          1.5 * delta;
     }
   }
 
-  // u64 base_pos = (prng.get<u64>()) % (send_size - intersection_size - 1);
-  u64 base_pos = 0;
+  u64 base_pos = (prng.get<u64>()) % (send_size - intersection_size - 1);
+  // u64 base_pos = 0;
   for (u64 i = base_pos; i < base_pos + intersection_size; i++) {
     for (u64 j = 0; j < dim; j++) {
       send_pts[i][j] = recv_pts[i - base_pos][j];
@@ -300,9 +299,18 @@ std::vector<block> bignumer_to_block_vector(const BigNumber &bn) {
 
   std::vector<block> cipher_block(PAILLIER_CIPHER_SIZE_IN_BLOCK, ZeroBlock);
 
-  for (auto i = 0; i < PAILLIER_CIPHER_SIZE_IN_BLOCK; i++) {
-    cipher_block[i] = block(((u64(ct[4 * i + 3])) << 32) + (u64(ct[4 * i + 2])),
-                            ((u64(ct[4 * i + 1])) << 32) + (u64(ct[4 * i])));
+  PRNG prng(oc::sysRandomSeed());
+
+  if (ct.size() < PAILLIER_CIPHER_SIZE_IN_BLOCK * 4) {
+    for (auto i = 0; i < PAILLIER_CIPHER_SIZE_IN_BLOCK; i++) {
+      cipher_block[i] = prng.get<block>();
+    }
+  } else {
+    for (auto i = 0; i < PAILLIER_CIPHER_SIZE_IN_BLOCK; i++) {
+      cipher_block[i] =
+          block(((u64(ct[4 * i + 3])) << 32) + (u64(ct[4 * i + 2])),
+                ((u64(ct[4 * i + 1])) << 32) + (u64(ct[4 * i])));
+    }
   }
 
   return cipher_block;
@@ -338,17 +346,16 @@ bignumers_to_block_vector(const std::vector<BigNumber> &bns) {
     bn.num2vec(ct);
 
     if (ct.size() < PAILLIER_CIPHER_SIZE_IN_BLOCK * 4) {
-      auto pad_count = PAILLIER_CIPHER_SIZE_IN_BLOCK * 4 - ct.size();
-      for (u64 i = 0; i < pad_count; i++) {
-        ct.push_back(prng.get<u32>());
+      for (auto i = 0; i < PAILLIER_CIPHER_SIZE_IN_BLOCK; i++) {
+        cipher_block.push_back(prng.get<block>());
       }
-    }
-
-    // notes: 小端序 Little-endian BLock构造, 如果是大端, 需要修改
-    for (auto i = 0; i < PAILLIER_CIPHER_SIZE_IN_BLOCK; i++) {
-      cipher_block.push_back(
-          block(((u64(ct[4 * i + 3])) << 32) + (u64(ct[4 * i + 2])),
-                ((u64(ct[4 * i + 1])) << 32) + (u64(ct[4 * i]))));
+    } else {
+      // notes: 小端序 Little-endian BLock构造, 如果是大端, 需要修改
+      for (auto i = 0; i < PAILLIER_CIPHER_SIZE_IN_BLOCK; i++) {
+        cipher_block.push_back(
+            block(((u64(ct[4 * i + 3])) << 32) + (u64(ct[4 * i + 2])),
+                  ((u64(ct[4 * i + 1])) << 32) + (u64(ct[4 * i]))));
+      }
     }
     ct.clear();
   }
@@ -356,6 +363,7 @@ bignumers_to_block_vector(const std::vector<BigNumber> &bns) {
   return cipher_block;
 }
 
+// 用于乘法
 std::vector<BigNumber>
 block_vector_to_bignumers(const std::vector<block> &ct, const u64 &value_size,
                           std::shared_ptr<BigNumber> nsq) {
@@ -375,6 +383,30 @@ block_vector_to_bignumers(const std::vector<block> &ct, const u64 &value_size,
     }
 
     bns.push_back(BigNumber(ct_u32.data(), ct_u32.size()) % (*nsq));
+  }
+
+  return bns;
+}
+
+// 加法就可以
+std::vector<BigNumber> block_vector_to_bignumers(const std::vector<block> &ct,
+                                                 const u64 &value_size) {
+  vector<BigNumber> bns;
+
+  std::vector<uint32_t> ct_u32(PAILLIER_CIPHER_SIZE_IN_BLOCK * 4, 0);
+
+  for (auto i = 0; i < value_size; i++) {
+    u32 temp[4];
+    u64 index = i * PAILLIER_CIPHER_SIZE_IN_BLOCK;
+    for (auto j = 0; j < PAILLIER_CIPHER_SIZE_IN_BLOCK; j++) {
+      memcpy(temp, ct[index + j].data(), 16);
+      ct_u32[4 * j] = temp[0];
+      ct_u32[4 * j + 1] = temp[1];
+      ct_u32[4 * j + 2] = temp[2];
+      ct_u32[4 * j + 3] = temp[3];
+    }
+
+    bns.push_back(BigNumber(ct_u32.data(), ct_u32.size()));
   }
 
   return bns;

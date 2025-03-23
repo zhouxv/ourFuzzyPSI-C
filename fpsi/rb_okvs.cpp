@@ -1,12 +1,12 @@
-// #include "cryptoTools/Common/CLP.h"
-
-#include "rb_okvs.h"
-#include "blake3.h"
 #include <format>
-#include <ipcl/bignum.h>
 #include <memory>
 #include <thread>
 #include <vector>
+
+#include "blake3.h"
+#include "rb_okvs.h"
+
+#include <ipcl/bignum.h>
 
 #define XOR(a, b)                                                              \
   for (u64 xor_cnt = 0; xor_cnt < VALUE_LENGTH_IN_BLOCK; xor_cnt++) {          \
@@ -137,6 +137,7 @@ RBOKVSParam RBOKVS::getParams(const u64 &n, const double &epsilon,
     if (nn <= 10) {
       param.mBandWidth = std::min<u64>(
           static_cast<u64>((stasSecParam + 6.296) / 0.2747), param.numCols());
+      cout << "param.mBandWidth" << param.mBandWidth << endl;
       if (param.mBandWidth < 72)
         param.mBandWidth = 72;
     } else if (nn <= 14) {
