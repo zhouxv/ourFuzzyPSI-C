@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <atomic>
 #include <format>
+#include <ipcl/utils/context.hpp>
 #include <iterator>
 #include <thread>
 #include <vector>
@@ -561,10 +562,13 @@ void FPSIRecv::msg_lp_low() {
   lp_timer.end("recv_if_match_decoding_total");
   spdlog::info("recv if match okvs decoding 完成");
 
+  ipcl::initializeContext("QAT");
+  ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
   lp_timer.start();
   auto add_res = ipcl::CipherText(if_match_pk, if_match_decode_ciphers) +
                  if_match_random_ciphers;
   lp_timer.end("recv_if_match_paillier_add");
+  ipcl::terminateContext();
   spdlog::info("recv if match paillier add 完成");
 
   coproto::sync_wait(sockets[0].flush());
