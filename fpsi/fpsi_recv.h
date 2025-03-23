@@ -45,8 +45,8 @@ public:
   vector<vector<vector<block>>> inf_value_pre_ciphers; // L_inf使用
   vector<vector<block>> lp_value_pre_ciphers;          // L_p getList 使用
 
-  ipcl::CipherText if_match_random_ciphers; // L_p if match使用
-  vector<block> if_match_random_hashes;     // L_p if match使用
+  ipcl::CipherText if_match_random_ciphers;         // L_p if match使用
+  std::unordered_set<block> if_match_random_hashes; // L_p if match使用
 
   // 构造函数
   FPSIRecv(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,

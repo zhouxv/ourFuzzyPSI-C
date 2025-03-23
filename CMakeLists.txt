@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.22)
 project(ourFPSI)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED YES)
+
 # include_directories：用于指定头文件的搜索路径，而不是库文件的路径
 include_directories(thirdparty/BLAKE3/c/)
 include_directories(utils)
@@ -18,6 +21,12 @@ add_executable(main ${SRCS})
 target_compile_options(main PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-std=c++20> -lpthread -O2)
 
 set(CMAKE_BUILD_TYPE Release)
+
+# 查找 fmt 库
+find_package(fmt REQUIRED)
+
+# 将 fmt 库链接到 main
+target_link_libraries(main fmt::fmt)
 
 # ############################################
 # Link  libOTe                   #

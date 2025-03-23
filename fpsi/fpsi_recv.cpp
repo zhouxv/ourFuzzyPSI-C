@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <atomic>
 #include <format>
+#include <ipcl/utils/context.hpp>
 #include <iterator>
 #include <thread>
 #include <vector>
@@ -124,7 +125,7 @@ void FPSIRecv::init_lp_low() {
     blake3_hasher_init(&hasher);
     blake3_hasher_update(&hasher, &value, sizeof(u64));
     blake3_hasher_finalize(&hasher, hash_out.data(), 16);
-    if_match_random_hashes.push_back(hash_out);
+    if_match_random_hashes.insert(hash_out);
   }
 
   spdlog::debug("recv if_match init done");
@@ -561,10 +562,13 @@ void FPSIRecv::msg_lp_low() {
   lp_timer.end("recv_if_match_decoding_total");
   spdlog::info("recv if match okvs decoding 完成");
 
+  ipcl::initializeContext("QAT");
+  ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
   lp_timer.start();
   auto add_res = ipcl::CipherText(if_match_pk, if_match_decode_ciphers) +
                  if_match_random_ciphers;
   lp_timer.end("recv_if_match_paillier_add");
+  ipcl::terminateContext();
   spdlog::info("recv if match paillier add 完成");
 
   coproto::sync_wait(sockets[0].flush());
@@ -581,10 +585,13 @@ void FPSIRecv::msg_lp_low() {
   coproto::sync_wait(sockets[0].recvResize(if_match_hashes));
   spdlog::info("recv if match hashes 接收完成");
 
+  cout << "if_match_hashes size: " << if_match_hashes.size() << endl;
+  cout << "if_match_random_hashes size: " << if_match_random_hashes.size()
+       << endl;
+
   u64 protocol_count = 0;
   for (auto tmp : if_match_hashes) {
-    if (std::find(if_match_random_hashes.begin(), if_match_random_hashes.end(),
-                  tmp) != if_match_random_hashes.end()) {
+    if (if_match_random_hashes.find(tmp) != if_match_random_hashes.end()) {
       protocol_count++;
     }
   }
