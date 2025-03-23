@@ -585,10 +585,6 @@ void FPSIRecv::msg_lp_low() {
   spdlog::info("recv if match hashes 接收完成");
   coproto::sync_wait(sockets[0].flush());
 
-  cout << "if_match_hashes size: " << if_match_hashes.size() << endl;
-  cout << "if_match_random_hashes size: " << if_match_random_hashes.size()
-       << endl;
-
   u64 protocol_count = 0;
   for (auto tmp : if_match_hashes) {
     if (if_match_random_hashes.find(tmp) != if_match_random_hashes.end()) {
