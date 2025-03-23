@@ -1,5 +1,6 @@
 #include "util.h"
 #include <cryptoTools/Common/Defines.h>
+#include <cryptoTools/Crypto/PRNG.h>
 #include <random>
 
 // 采样，并指定交点数量
@@ -288,11 +289,22 @@ const IfMatchParamTable::ParamType get_if_match_params(u64 metric, u64 delta) {
 std::vector<block> bignumer_to_block_vector(const BigNumber &bn) {
   std::vector<u32> ct;
   bn.num2vec(ct);
+
+  if (ct.size() < PAILLIER_CIPHER_SIZE_IN_BLOCK * 4) {
+    PRNG prng(oc::sysRandomSeed());
+    auto pad_count = PAILLIER_CIPHER_SIZE_IN_BLOCK * 4 - ct.size();
+    for (u64 i = 0; i < pad_count; i++) {
+      ct.push_back(prng.get<u32>());
+    }
+  }
+
   std::vector<block> cipher_block(PAILLIER_CIPHER_SIZE_IN_BLOCK, ZeroBlock);
+
   for (auto i = 0; i < PAILLIER_CIPHER_SIZE_IN_BLOCK; i++) {
     cipher_block[i] = block(((u64(ct[4 * i + 3])) << 32) + (u64(ct[4 * i + 2])),
                             ((u64(ct[4 * i + 1])) << 32) + (u64(ct[4 * i])));
   }
+
   return cipher_block;
 }
 
@@ -320,8 +332,18 @@ bignumers_to_block_vector(const std::vector<BigNumber> &bns) {
   std::vector<u32> ct;
   ct.reserve(PAILLIER_CIPHER_SIZE_IN_BLOCK * 4);
 
+  PRNG prng(oc::sysRandomSeed());
+
   for (const auto &bn : bns) {
     bn.num2vec(ct);
+
+    if (ct.size() < PAILLIER_CIPHER_SIZE_IN_BLOCK * 4) {
+      auto pad_count = PAILLIER_CIPHER_SIZE_IN_BLOCK * 4 - ct.size();
+      for (u64 i = 0; i < pad_count; i++) {
+        ct.push_back(prng.get<u32>());
+      }
+    }
+
     // notes: 小端序 Little-endian BLock构造, 如果是大端, 需要修改
     for (auto i = 0; i < PAILLIER_CIPHER_SIZE_IN_BLOCK; i++) {
       cipher_block.push_back(
