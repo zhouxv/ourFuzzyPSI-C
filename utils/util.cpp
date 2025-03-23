@@ -1,5 +1,7 @@
 #include "util.h"
 #include <cryptoTools/Common/Defines.h>
+#include <cryptoTools/Common/block.h>
+#include <cryptoTools/Crypto/PRNG.h>
 #include <random>
 
 // 采样，并指定交点数量
@@ -287,9 +289,19 @@ std::vector<block> bignumer_to_block_vector(const BigNumber &bn) {
   std::vector<u32> ct;
   bn.num2vec(ct);
   std::vector<block> cipher_block(PAILLIER_CIPHER_SIZE_IN_BLOCK, ZeroBlock);
-  for (auto i = 0; i < PAILLIER_CIPHER_SIZE_IN_BLOCK; i++) {
-    cipher_block[i] = block(((u64(ct[4 * i + 3])) << 32) + (u64(ct[4 * i + 2])),
-                            ((u64(ct[4 * i + 1])) << 32) + (u64(ct[4 * i])));
+
+  PRNG prng(oc::sysRandomSeed());
+
+  if (ct.size() < PAILLIER_CIPHER_SIZE_IN_BLOCK * 4) {
+    for (auto i = 0; i < PAILLIER_CIPHER_SIZE_IN_BLOCK; i++) {
+      cipher_block[i] = prng.get<block>();
+    }
+  } else {
+    for (auto i = 0; i < PAILLIER_CIPHER_SIZE_IN_BLOCK; i++) {
+      cipher_block[i] =
+          block(((u64(ct[4 * i + 3])) << 32) + (u64(ct[4 * i + 2])),
+                ((u64(ct[4 * i + 1])) << 32) + (u64(ct[4 * i])));
+    }
   }
   return cipher_block;
 }
@@ -318,13 +330,22 @@ bignumers_to_block_vector(const std::vector<BigNumber> &bns) {
   std::vector<u32> ct;
   ct.reserve(PAILLIER_CIPHER_SIZE_IN_BLOCK * 4);
 
+  PRNG prng(oc::sysRandomSeed());
+
   for (const auto &bn : bns) {
     bn.num2vec(ct);
-    // notes: 小端序 Little-endian BLock构造, 如果是大端, 需要修改
-    for (auto i = 0; i < PAILLIER_CIPHER_SIZE_IN_BLOCK; i++) {
-      cipher_block.push_back(
-          block(((u64(ct[4 * i + 3])) << 32) + (u64(ct[4 * i + 2])),
-                ((u64(ct[4 * i + 1])) << 32) + (u64(ct[4 * i]))));
+
+    if (ct.size() < PAILLIER_CIPHER_SIZE_IN_BLOCK * 4) {
+      for (auto i = 0; i < PAILLIER_CIPHER_SIZE_IN_BLOCK; i++) {
+        cipher_block.push_back(prng.get<block>());
+      }
+    } else {
+      // notes: 小端序 Little-endian BLock构造, 如果是大端, 需要修改
+      for (auto i = 0; i < PAILLIER_CIPHER_SIZE_IN_BLOCK; i++) {
+        cipher_block.push_back(
+            block(((u64(ct[4 * i + 3])) << 32) + (u64(ct[4 * i + 2])),
+                  ((u64(ct[4 * i + 1])) << 32) + (u64(ct[4 * i]))));
+      }
     }
     ct.clear();
   }
