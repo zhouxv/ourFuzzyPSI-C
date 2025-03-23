@@ -476,7 +476,6 @@ void FPSIRecv::msg_lp_low() {
     ipcl::PlainText plainText = sk.decrypt(ipcl::CipherText(pk, bigNums));
     post_process_lp_timer.end(
         std::format("recv_thread_{}_decrypt", thread_index));
-    ipcl::terminateContext();
 
     // 获取明文
     vector<u64> plain_nums(res_size, 0);
@@ -570,6 +569,7 @@ void FPSIRecv::msg_lp_low() {
                  if_match_random_ciphers;
   lp_timer.end("recv_if_match_paillier_add");
   spdlog::info("recv if match paillier add 完成");
+  ipcl::terminateContext();
 
   coproto::sync_wait(sockets[0].flush());
   coproto::sync_wait(sockets[0].send(if_match_count));
