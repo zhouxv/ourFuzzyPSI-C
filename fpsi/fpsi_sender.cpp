@@ -488,14 +488,11 @@ void FPSISender::msg_lp_low() {
 
   ipcl::initializeContext("QAT");
   ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
-  ipcl::initializeContext("QAT");
-  ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
   lp_timer.start();
   auto add_cipher_dec =
       if_match_sk.decrypt(ipcl::CipherText(if_match_pk, decrypt_res));
   lp_timer.end("sender_if_match_add_decrypt");
   ipcl::terminateContext();
-
   spdlog::info("sender if match add decrypt 解密完成");
 
   vector<block> add_hashes;
