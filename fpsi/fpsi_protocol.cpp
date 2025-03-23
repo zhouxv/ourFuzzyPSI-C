@@ -166,93 +166,11 @@ void test_low_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
   spdlog::info("trait             : {}", trait);
 
   vector<double> time_sums(trait, 0);
-  vector<double> sender_offline_time_sums(trait, 0);
-  vector<double> recv_offline_time_sums(trait, 0);
   vector<u64> comm_sums(trait, 0);
   u64 pass_count = 0;
 
-  for (u64 i = 0; i < trait; i++) {
-    test_low_dimension_detail(DIM, DELTA, recv_size, METRIC, intersection_size,
-                              i, param, recv_offline_time_sums,
-                              sender_offline_time_sums, time_sums, comm_sums,
-                              pass_count);
-  }
-
-  cout << std::format("n_r: {} , n_s: {} , delta: {} , metric: {}, PARAM: {}",
-                      recv_size, recv_size, DELTA, METRIC, pairToString(param))
-       << endl;
-
-  for (u64 i = 0; i < trait; i++) {
-    cout << std::format("{} 离线 recv: {} ms, 离线sender: {} ms, 在线时间: {}, "
-                        "通信: {} 字节",
-                        i, recv_offline_time_sums[i],
-                        sender_offline_time_sums[i], time_sums[i], comm_sums[i])
-         << endl;
-  }
-
-  double avg_offline_recv_total =
-      accumulate(recv_offline_time_sums.begin(), recv_offline_time_sums.end(),
-                 0.0) /
-      trait;
-
-  double avg_offline_sender_total =
-      accumulate(sender_offline_time_sums.begin(),
-                 sender_offline_time_sums.end(), 0.0) /
-      trait;
-
-  double avg_offline_total = avg_offline_recv_total + avg_offline_sender_total;
-
-  double avg_online_time =
-      accumulate(time_sums.begin(), time_sums.end(), 0.0) / trait;
-
-  double avg_com = accumulate(comm_sums.begin(), comm_sums.end(), 0.0) / trait;
-
-  cout << std::format("平均: {} ms, {} s, {} bytes , {} MB, 通过数: {} / {}",
-                      avg_online_time, avg_online_time / 1000.0, avg_com,
-                      avg_com / 1024.0 / 1024.0, pass_count, trait)
-       << endl;
-
-  cout << std::format("平均: 离线 recv: {} ms, 离线sender: {} ms, 离线总时间: "
-                      "{} ms, 在线时间: {}, "
-                      "通信  {} MB, 通过数: {} / {}",
-                      avg_offline_recv_total, avg_offline_sender_total,
-                      avg_offline_total, avg_online_time,
-                      avg_com / 1024.0 / 1024.0, pass_count, trait)
-       << endl;
-
-  cout << std::format("{} {} {} {} {}  {}/{}", avg_offline_recv_total,
-                      avg_offline_sender_total, avg_offline_total,
-                      avg_online_time, avg_com / 1024.0 / 1024.0, pass_count,
-                      trait)
-       << endl
-       << endl;
-
-  return;
-}
-
-void test_low_dimension_detail(u64 DIM, u64 DELTA, u64 recv_size, u64 METRIC,
-                               u64 intersection_size, u64 index,
-                               const OmegaUTable::ParamType &param,
-                               vector<double> &recv_offline_time_sums,
-                               vector<double> &sender_offline_time_sums,
-                               vector<double> &time_sums,
-                               vector<u64> &comm_sums, u64 &pass_count) {
-
-  u64 send_size = recv_size;
-  spdlog::info("这是第 {} 个测试运行", index);
-  spdlog::info("--------------------- offline start ------------------------");
-
   vector<pt> recv_pts(recv_size, vector<u64>(DIM, 0));
   vector<pt> send_pts(send_size, vector<u64>(DIM, 0));
-
-  // 计时
-  simpleTimer timer;
-  timer.start();
-  sample_points(DIM, DELTA, send_size, recv_size, intersection_size, send_pts,
-                recv_pts);
-  timer.end("pts_sample");
-
-  spdlog::info("双方 pt 集合采样完成");
 
   // palliar公私钥
   ipcl::initializeContext("QAT");
@@ -278,63 +196,95 @@ void test_low_dimension_detail(u64 DIM, u64 DELTA, u64 recv_size, u64 METRIC,
                     if_match_key.priv_key, socketPair1);
 
   // offline
-  timer.start();
   recv.init();
-  timer.end("recv_init");
   spdlog::info("recv setup完成");
 
-  timer.start();
   sender.init();
-  timer.end("sender_init");
   spdlog::info("sender setup完成");
 
-  spdlog::info("----------------------- online start ------------------------");
+  for (u64 i = 0; i < trait; i++) {
+    // 计时
+    simpleTimer timer;
 
-  timer.start();
-  // 使用 std::bind 将成员函数和对象绑定
-  std::thread recv_msg(std::bind(&FPSIRecv::msg, &recv));
-  std::thread send_msg(std::bind(&FPSISender::msg, &sender));
+    spdlog::info("这是第 {} 个测试运行", i);
 
-  recv_msg.join();
-  send_msg.join();
-  timer.end("protocol_online");
-  spdlog::info("-------------------- output preformance ---------------------");
+    sample_points(DIM, DELTA, send_size, recv_size, intersection_size, send_pts,
+                  recv_pts);
+    spdlog::info("双方 pt 集合采样完成");
 
-  spdlog::info("intersection size : {}", recv.psi_ca_result);
+    spdlog::info(
+        "----------------------- online start ------------------------");
 
-  timer.print();
-  spdlog::info("");
-  recv.print_time();
-  spdlog::info("");
-  sender.print_time();
-  spdlog::info("");
-  recv.print_commus();
-  spdlog::info("");
-  sender.print_commus();
+    timer.start();
+    // 使用 std::bind 将成员函数和对象绑定
+    std::thread recv_msg(std::bind(&FPSIRecv::msg, &recv));
+    std::thread send_msg(std::bind(&FPSISender::msg, &sender));
 
-  if (recv.psi_ca_result == intersection_size)
-    pass_count += 1;
+    recv_msg.join();
+    send_msg.join();
+    timer.end("protocol_online");
+    spdlog::info(
+        "-------------------- output preformance ---------------------");
 
-  auto recv_offline_timer = timer.get_by_key("recv_init");
-  auto sender_offline_timer = timer.get_by_key("sender_init");
-  auto online_time = timer.get_by_key("protocol_online");
+    spdlog::info("intersection size : {}", recv.psi_ca_result);
 
-  auto recv_com = recv.commus;
-  auto sender_com = sender.commus;
+    timer.print();
+    spdlog::info("");
+    recv.print_time();
+    spdlog::info("");
+    sender.print_time();
+    spdlog::info("");
+    recv.print_commus();
+    spdlog::info("");
+    sender.print_commus();
 
-  auto total_com = 0;
-  for (auto it = recv_com.begin(); it != recv_com.end(); it++) {
-    total_com += it->second;
+    if (recv.psi_ca_result == intersection_size)
+      pass_count += 1;
+
+    auto online_time = timer.get_by_key("protocol_online");
+
+    auto recv_com = recv.commus;
+    auto sender_com = sender.commus;
+
+    auto total_com = 0;
+    for (auto it = recv_com.begin(); it != recv_com.end(); it++) {
+      total_com += it->second;
+    }
+    for (auto it = sender_com.begin(); it != sender_com.end(); it++) {
+      total_com += it->second;
+    }
+
+    time_sums[i] = online_time;
+    comm_sums[i] = total_com;
+
+    recv.clear();
+    sender.clear();
   }
-  for (auto it = sender_com.begin(); it != sender_com.end(); it++) {
-    total_com += it->second;
+
+  cout << std::format("n_r: {} , n_s: {} , delta: {} , metric: {}, PARAM: {}",
+                      recv_size, recv_size, DELTA, METRIC, pairToString(param))
+       << endl;
+
+  for (u64 i = 0; i < trait; i++) {
+    cout << std::format("{} 在线时间: {} ms , 通信: {} 字节 {} MB", i,
+                        time_sums[i], comm_sums[i], comm_sums[i] / 1024 / 1024)
+         << endl;
   }
 
-  recv_offline_time_sums[index] = recv_offline_timer;
-  sender_offline_time_sums[index] = sender_offline_timer;
-  time_sums[index] = online_time;
-  comm_sums[index] = total_com;
+  double avg_online_time =
+      accumulate(time_sums.begin(), time_sums.end(), 0.0) / trait;
 
-  recv_pts.clear();
-  send_pts.clear();
+  double avg_com = accumulate(comm_sums.begin(), comm_sums.end(), 0.0) / trait;
+
+  cout << std::format("平均: 在线时间: {} ms , 通信  {} MB, 通过数: {} / {}",
+                      avg_online_time, avg_com / 1024.0 / 1024.0, pass_count,
+                      trait)
+       << endl;
+
+  cout << std::format("{} {} {}/{}", avg_online_time, avg_com / 1024.0 / 1024.0,
+                      pass_count, trait)
+       << endl
+       << endl;
+
+  return;
 }

@@ -37,6 +37,15 @@ public:
 
   u64 psi_ca_result = 0;
 
+  void clear() {
+    psi_ca_result = 0;
+    for (auto socket : sockets) {
+      socket.mImpl->mBytesSent = 0;
+    }
+    commus.clear();
+    recvTimer.clear();
+  }
+
   // OKVS
   RBOKVS rb_okvs;
   vector<RBOKVS> rb_okvs_vec;

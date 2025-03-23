@@ -43,13 +43,12 @@ public:
   vector<u64> random_sums;                       // L_p if match 使用
   vector<vector<block>> lp_if_match_pre_ciphers; // L_p if match使用
 
-  ~FPSISender() {
-    pts.clear();
-    lp_pre_ciphers.clear();
-    random_hashes.clear();
-    random_ciphers.clear();
-    random_sums.clear();
-    lp_if_match_pre_ciphers.clear();
+  void clear() {
+    for (auto socket : sockets) {
+      socket.mImpl->mBytesSent = 0;
+    }
+    commus.clear();
+    senderTimer.clear();
   }
 
   FPSISender(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
@@ -94,11 +93,11 @@ public:
   void msg_lp_low();
 
   // 计时器
-  simpleTimer recvTimer;
+  simpleTimer senderTimer;
 
-  void print_time() { recvTimer.print(); }
+  void print_time() { senderTimer.print(); }
 
-  void merge_timer(simpleTimer &other) { recvTimer.merge(other); }
+  void merge_timer(simpleTimer &other) { senderTimer.merge(other); }
 
   // 通信计数
   std::vector<std::pair<string, u64>> commus;
