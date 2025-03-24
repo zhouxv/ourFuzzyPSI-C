@@ -98,8 +98,7 @@ public:
   std::vector<std::pair<string, u64>> commus;
   void print_commus() {
     for (auto &x : commus) {
-      spdlog::info("{}: {} 字节; {} MB", x.first, x.second,
-                   x.second / 1024.0 / 1024.0);
+      spdlog::info("{}: {} MB", x.first, x.second);
     }
   }
 

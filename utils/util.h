@@ -22,6 +22,7 @@ typedef std::chrono::high_resolution_clock::time_point tVar;
 
 class simpleTimer {
 public:
+  std::mutex mtx; // 互斥锁
   tVar t;
   std::map<string, double> timers;
   std::vector<string> timer_keys;
@@ -43,6 +44,11 @@ public:
   double get_by_key(const string &key) { return timers.at(key); }
 
   void merge(simpleTimer &other) {
+    if (&other == nullptr)
+      return;
+    std::lock_guard<std::mutex> lock(mtx);
+    std::lock_guard<std::mutex> other_lock(other.mtx);
+
     auto other_keys = other.timer_keys;
     auto other_maps = other.timers;
 

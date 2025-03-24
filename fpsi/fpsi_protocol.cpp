@@ -274,7 +274,8 @@ void test_low_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
 
   for (u64 i = 0; i < trait; i++) {
     cout << std::format("{} 在线时间: {} ms , 通信: {} 字节 {} MB", i,
-                        time_sums[i], comm_sums[i], comm_sums[i] / 1024 / 1024)
+                        time_sums[i], comm_sums[i],
+                        comm_sums[i] / 1024.0 / 1024.0)
          << endl;
   }
 
