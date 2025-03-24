@@ -289,14 +289,6 @@ std::vector<block> bignumer_to_block_vector(const BigNumber &bn) {
   std::vector<u32> ct;
   bn.num2vec(ct);
 
-  if (ct.size() < PAILLIER_CIPHER_SIZE_IN_BLOCK * 4) {
-    PRNG prng(oc::sysRandomSeed());
-    auto pad_count = PAILLIER_CIPHER_SIZE_IN_BLOCK * 4 - ct.size();
-    for (u64 i = 0; i < pad_count; i++) {
-      ct.push_back(prng.get<u32>());
-    }
-  }
-
   std::vector<block> cipher_block(PAILLIER_CIPHER_SIZE_IN_BLOCK, ZeroBlock);
 
   PRNG prng(oc::sysRandomSeed());

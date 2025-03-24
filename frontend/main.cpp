@@ -18,6 +18,11 @@ int main(int argc, char **argv) {
   spdlog::set_level(spdlog::level::info);
   spdlog::set_pattern("[%l] %v");
 
+  if (cmd.isSet("single")) {
+    run_low_dimension(cmd);
+    return 0;
+  }
+
   test_low_dimension(cmd);
 
   return 0;
