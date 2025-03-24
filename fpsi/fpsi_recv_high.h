@@ -93,7 +93,7 @@ public:
   void merge_timer(simpleTimer &other) { recvTimer.merge(other); }
 
   // 通信计数
-  std::vector<std::pair<string, u64>> commus;
+  std::vector<std::pair<string, double>> commus;
 
   void print_commus() {
     for (auto &x : commus) {

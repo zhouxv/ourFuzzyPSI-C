@@ -173,7 +173,7 @@ void test_low_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
   spdlog::info("trait             : {}", trait);
 
   vector<double> time_sums(trait, 0);
-  vector<u64> comm_sums(trait, 0);
+  vector<double> comm_sums(trait, 0.0);
   u64 pass_count = 0;
 
   vector<pt> recv_pts(recv_size, vector<u64>(DIM, 0));
@@ -253,7 +253,7 @@ void test_low_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
     auto recv_com = recv.commus;
     auto sender_com = sender.commus;
 
-    auto total_com = 0;
+    double total_com = 0.0;
     for (auto it = recv_com.begin(); it != recv_com.end(); it++) {
       total_com += it->second;
     }
@@ -283,13 +283,12 @@ void test_low_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
 
   double avg_com = accumulate(comm_sums.begin(), comm_sums.end(), 0.0) / trait;
 
-  cout << std::format("平均: 在线时间: {} ms , 通信  {} MB, 通过数: {} / {}",
-                      avg_online_time, avg_com / 1024.0 / 1024.0, pass_count,
-                      trait)
+  cout << std::format("平均: 在线时间: {} ms , 通信:  {} MB, 通过数: {} / {}",
+                      avg_online_time, avg_com, pass_count, trait)
        << endl;
 
-  cout << std::format("{} {} {}/{}", avg_online_time, avg_com / 1024.0 / 1024.0,
-                      pass_count, trait)
+  cout << std::format("{} {} {}/{}", avg_online_time, avg_com, pass_count,
+                      trait)
        << endl
        << endl;
 
