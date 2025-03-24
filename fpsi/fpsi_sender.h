@@ -108,7 +108,8 @@ public:
   }
 
   void insert_commus(const string &msg, u64 socket_index) {
-    commus.push_back({msg, sockets[socket_index].bytesSent()});
+    commus.push_back(
+        {msg, sockets[socket_index].bytesSent() / 1024.0 / 1024.0});
     sockets[socket_index].mImpl->mBytesSent = 0;
   }
 };
