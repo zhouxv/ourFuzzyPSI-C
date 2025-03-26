@@ -7,6 +7,7 @@
 #include <ipcl/bignum.h>
 #include <ipcl/ciphertext.hpp>
 #include <ipcl/ipcl.hpp>
+#include <ipcl/pri_key.hpp>
 #include <ipcl/pub_key.hpp>
 #include <vector>
 
@@ -22,12 +23,12 @@ public:
   // 一些核心对象的引用
   vector<pt> &pts; // 点集
   const ipcl::PublicKey pk;
-  const ipcl::PublicKey if_match_pk;
   const ipcl::PrivateKey sk;
+  const DH25519_number dh_sk;
   vector<coproto::LocalAsyncSocket> &sockets;
 
   // 计算的一些参数
-  OmegaUTable::ParamType OMEGA_PARAM;
+  pair<set<u64>, u64> OMEGA_PARAM;
   IfMatchParamTable::ParamType IF_MATCH_PARAM;
   u64 SIDE_LEN;  // 直径
   u64 BLK_CELLS; // 2^DIM
@@ -37,6 +38,15 @@ public:
 
   u64 psi_ca_result = 0;
 
+  void clear() {
+    psi_ca_result = 0;
+    for (auto socket : sockets) {
+      socket.mImpl->mBytesSent = 0;
+    }
+    commus.clear();
+    recvTimer.clear();
+  }
+
   // OKVS
   RBOKVS rb_okvs;
   vector<RBOKVS> rb_okvs_vec;
@@ -45,17 +55,13 @@ public:
   vector<vector<vector<block>>> inf_value_pre_ciphers; // L_inf使用
   vector<vector<block>> lp_value_pre_ciphers;          // L_p getList 使用
 
-  ipcl::CipherText if_match_random_ciphers;         // L_p if match使用
-  std::unordered_set<block> if_match_random_hashes; // L_p if match使用
-
   // 构造函数
   FPSIRecv(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
            vector<pt> &pts, ipcl::PublicKey pk, ipcl::PrivateKey sk,
-           ipcl::PublicKey if_match_pk,
-           vector<coproto::LocalAsyncSocket> &sockets)
+           DH25519_number dh_sk, vector<coproto::LocalAsyncSocket> &sockets)
       : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
-        THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk),
-        if_match_pk(if_match_pk), sockets(sockets) {
+        THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk), dh_sk(dh_sk),
+        sockets(sockets) {
     // 参数初始化
     OMEGA_PARAM = get_omega_params(metric, delta);
     if (metric != 0)
@@ -67,16 +73,30 @@ public:
     OKVS_SIZE = pt_num * BLK_CELLS * OMEGA_PARAM.second;
   };
 
-  // 构造函数
+  // Linf test param
   FPSIRecv(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
            vector<pt> &pts, ipcl::PublicKey pk, ipcl::PrivateKey sk,
-           ipcl::PublicKey if_match_pk, OmegaUTable::ParamType param,
+           DH25519_number dh_sk, OmegaTable::ParamType param,
            vector<coproto::LocalAsyncSocket> &sockets)
       : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
-        THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk),
-        if_match_pk(if_match_pk), OMEGA_PARAM(param), sockets(sockets) {
-    if (metric != 0)
-      IF_MATCH_PARAM = get_if_match_params(metric, delta);
+        THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk), dh_sk(dh_sk),
+        OMEGA_PARAM(param), sockets(sockets) {
+    SIDE_LEN = 2 * delta;
+    BLK_CELLS = 1 << dim;
+    DELTA_L2 = delta * delta;
+    OKVS_COUNT = (metric == 0) ? dim : 2 * dim;
+    OKVS_SIZE = pt_num * BLK_CELLS * OMEGA_PARAM.second;
+  };
+
+  // Lp test param
+  FPSIRecv(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
+           vector<pt> &pts, ipcl::PublicKey pk, ipcl::PrivateKey sk,
+           DH25519_number dh_sk, OmegaTable::ParamType param,
+           IfMatchParamTable::ParamType if_match_param,
+           vector<coproto::LocalAsyncSocket> &sockets)
+      : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
+        THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk), dh_sk(dh_sk),
+        OMEGA_PARAM(param), IF_MATCH_PARAM(if_match_param), sockets(sockets) {
     SIDE_LEN = 2 * delta;
     BLK_CELLS = 1 << dim;
     DELTA_L2 = delta * delta;
@@ -102,17 +122,17 @@ public:
   void merge_timer(simpleTimer &other) { recvTimer.merge(other); }
 
   // 通信计数
-  std::vector<std::pair<string, u64>> commus;
+  std::vector<std::pair<string, double>> commus;
 
   void print_commus() {
     for (auto &x : commus) {
-      spdlog::info("{}: {} 字节; {} MB", x.first, x.second,
-                   x.second / 1024.0 / 1024.0);
+      spdlog::info("{}: {} MB", x.first, x.second);
     }
   }
 
   void insert_commus(const string &msg, u64 socket_index) {
-    commus.push_back({msg, sockets[socket_index].bytesSent()});
+    commus.push_back(
+        {msg, sockets[socket_index].bytesSent() / 1024.0 / 1024.0});
     sockets[socket_index].mImpl->mBytesSent = 0;
   }
 };

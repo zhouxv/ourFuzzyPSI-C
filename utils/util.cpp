@@ -1,4 +1,5 @@
 #include "util.h"
+#include "params_selects.h"
 #include <cryptoTools/Common/Defines.h>
 #include <cryptoTools/Common/block.h>
 #include <cryptoTools/Crypto/PRNG.h>
@@ -26,8 +27,8 @@ void sample_points(u64 dim, u64 delta, u64 send_size, u64 recv_size,
     }
   }
 
-  u64 base_pos = (prng.get<u64>()) % (send_size - intersection_size - 1);
-  // u64 base_pos = 0;
+  // u64 base_pos = (prng.get<u64>()) % (send_size - intersection_size - 1);
+  u64 base_pos = 0;
   for (u64 i = base_pos; i < base_pos + intersection_size; i++) {
     for (u64 j = 0; j < dim; j++) {
       send_pts[i][j] = recv_pts[i - base_pos][j];
@@ -269,12 +270,14 @@ u64 fast_pow(u64 base, u64 exp) {
 /// assert_eq!(merged, vec![(0, 2), (3, 5), (6, 8)]);
 /// ```
 
-const OmegaUTable::ParamType get_omega_params(u64 metric, u64 delta) {
+const OmegaTable::ParamType get_omega_params(u64 metric, u64 delta) {
   if (metric < 0 || metric > 2) {
     throw invalid_argument("get_omega_params: Invalid metric value.");
   }
-  u64 t = (metric == 0) ? (delta * 2 + 1) : (delta + 1);
-  return OmegaUTable::getSelectedParam(t);
+
+  auto t = (metric == 0) ? (delta * 2 + 1) : (delta + 1);
+
+  return OmegaTable::getSelectedParam(t);
 }
 
 const IfMatchParamTable::ParamType get_if_match_params(u64 metric, u64 delta) {
@@ -288,6 +291,7 @@ const IfMatchParamTable::ParamType get_if_match_params(u64 metric, u64 delta) {
 std::vector<block> bignumer_to_block_vector(const BigNumber &bn) {
   std::vector<u32> ct;
   bn.num2vec(ct);
+
   std::vector<block> cipher_block(PAILLIER_CIPHER_SIZE_IN_BLOCK, ZeroBlock);
 
   PRNG prng(oc::sysRandomSeed());
@@ -303,6 +307,7 @@ std::vector<block> bignumer_to_block_vector(const BigNumber &bn) {
                 ((u64(ct[4 * i + 1])) << 32) + (u64(ct[4 * i])));
     }
   }
+
   return cipher_block;
 }
 

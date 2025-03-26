@@ -6,6 +6,7 @@
 #include <thread>
 #include <vector>
 
+#include <cryptoTools/Common/BitVector.h>
 #include <cryptoTools/Common/Defines.h>
 #include <cryptoTools/Common/block.h>
 #include <ipcl/bignum.h>
@@ -100,35 +101,6 @@ void FPSIRecv::init_lp_low() {
 
   // if_match 部分的预计算
 
-  // 计算随机数
-  u64 if_match_okvs_size = PTS_NUM * IF_MATCH_PARAM.first.size() *
-                           fast_pow(OMEGA_PARAM.first.size() * 2, DIM);
-
-  vector<u64> if_match_random_values(if_match_okvs_size, 0);
-  vector<BigNumber> if_match_random_bns(if_match_okvs_size, 0);
-
-  PRNG prng((block(oc::sysRandomSeed())));
-  for (u64 i = 0; i < if_match_okvs_size; i++) {
-    if_match_random_values[i] = prng.get<u64>();
-    if_match_random_bns[i] =
-        BigNumber(reinterpret_cast<Ipp32u *>(&if_match_random_values[i]), 2);
-  }
-
-  ipcl::PlainText if_match_randoms_pt = ipcl::PlainText(if_match_random_bns);
-  if_match_random_ciphers = if_match_pk.encrypt(if_match_randoms_pt);
-
-  // 计算随机数的哈希
-  blake3_hasher hasher;
-  block hash_out;
-  if_match_random_hashes.reserve(if_match_okvs_size);
-  for (auto &value : if_match_random_values) {
-    blake3_hasher_init(&hasher);
-    blake3_hasher_update(&hasher, &value, sizeof(u64));
-    blake3_hasher_finalize(&hasher, hash_out.data(), 16);
-    if_match_random_hashes.insert(hash_out);
-  }
-
-  spdlog::debug("recv if_match init done");
   ipcl::terminateContext();
 }
 
@@ -519,82 +491,85 @@ void FPSIRecv::msg_lp_low() {
   // if match 协议
   /*--------------------------------------------------------------------------------------------------------------------------------*/
 
-  // 接收 encoding
-  u64 if_match_okvs_N;
-  u64 if_match_okvs_size;
+  u64 sums_count = PTS_NUM * fast_pow(OMEGA_PARAM.first.size() * 2, DIM);
+  u64 prefixs_num = IF_MATCH_PARAM.first.size();
+  // 提前分配空间
+  vector<vector<block>> recv_sums_prefixs(
+      sums_count, vector<block>(prefixs_num, ZeroBlock));
+  vector<vector<DH25519_point>> recv_sums_prefixs_dh(
+      sums_count, vector<DH25519_point>(prefixs_num));
 
-  coproto::sync_wait(sockets[0].flush());
-  coproto::sync_wait(sockets[0].recv(if_match_okvs_N));
-  coproto::sync_wait(sockets[0].recv(if_match_okvs_size));
-
-  vector<vector<block>> if_match_encoding(
-      if_match_okvs_size, vector<block>(PAILLIER_CIPHER_SIZE_IN_BLOCK));
-
-  coproto::sync_wait(sockets[0].flush());
-
-  for (u64 i = 0; i < if_match_okvs_size; i++) {
-    coproto::sync_wait(sockets[0].recvResize(if_match_encoding[i]));
-  }
-
-  spdlog::info("recv if match okvs encoding 接收完成");
-
-  RBOKVS if_match_okvs;
-  if_match_okvs.init(if_match_okvs_N, OKVS_EPSILON, OKVS_LAMBDA, OKVS_SEED);
-
-  vector<BigNumber> if_match_decode_ciphers;
-  u64 if_match_count = PTS_NUM * IF_MATCH_PARAM.first.size() *
-                       fast_pow(OMEGA_PARAM.first.size() * 2, DIM);
-  if_match_decode_ciphers.reserve(if_match_count);
-
-  lp_timer.start();
+  u64 sum_index = 0;
   for (const auto &sums : sums_vec) {
     for (const auto &sum : sums) {
-      auto prefixs = set_prefix(sum, IF_MATCH_PARAM.first); // 避免不必要的拷贝
-      for (string &prefix : prefixs) {
+      auto prefixs = set_prefix(sum, IF_MATCH_PARAM.first);
+      for (auto i = 0; i < prefixs_num; i++) {
+        recv_sums_prefixs[sum_index][i] = get_key_from_dec(prefixs[i]);
+      }
+      sum_index += 1;
+    }
+  }
 
-        auto key = get_key_from_dec(prefix);
-        if_match_decode_ciphers.push_back(
-            block_vector_to_bignumer(if_match_okvs.decode(
-                if_match_encoding, key, PAILLIER_CIPHER_SIZE_IN_BLOCK)));
+  spdlog::debug("recv prefix size {} {} sums_count {}", sum_index, prefixs_num,
+                sums_count);
+
+  lp_timer.start();
+  for (u64 i = 0; i < sums_count; i++) {
+    for (u64 j = 0; j < prefixs_num; j++) {
+      recv_sums_prefixs_dh[i][j] =
+          DH25519_point(recv_sums_prefixs[i][j]) * dh_sk;
+    }
+  }
+  lp_timer.end("recv_sums_prefixs_dh");
+
+  spdlog::info("recv: recv_sums_prefixs_dh 计算完成 ");
+
+  coproto::sync_wait(sockets[0].send(sums_count));
+  coproto::sync_wait(sockets[0].flush());
+  for (u64 i = 0; i < sums_count; i++) {
+    coproto::sync_wait(sockets[0].send(recv_sums_prefixs_dh[i]));
+  }
+  insert_commus("recv_sums_prefixs_dh", 0);
+
+  spdlog::info(
+      "recv: recv_sums_prefixs_dh 发送完成; recv_sums_prefixs_dh size {}",
+      recv_sums_prefixs_dh.size());
+
+  vector<vector<DH25519_point>> sender_prefixes_dh(PTS_NUM);
+  unordered_set<DH25519_point, Monty25519Hash> sender_prefixes_dh_k;
+  sender_prefixes_dh_k.reserve(PTS_NUM * IF_MATCH_PARAM.second);
+
+  for (u64 i = 0; i < PTS_NUM; i++) {
+    coproto::sync_wait(sockets[0].recvResize(sender_prefixes_dh[i]));
+  }
+  spdlog::info("recv: sender_if_match_prefixes_dh 接收完成 ");
+
+  lp_timer.start();
+  for (auto tmp : sender_prefixes_dh) {
+    for (auto monty_point : tmp) {
+      sender_prefixes_dh_k.insert(monty_point * dh_sk);
+    }
+  }
+  lp_timer.end("sender_prefixes_dh_k");
+  spdlog::info("recv: sender_prefixes_dh_k 计算完成 ");
+
+  vector<vector<DH25519_point>> recv_sums_prefixs_dh_k(sums_count);
+  for (u64 i = 0; i < sums_count; i++) {
+    coproto::sync_wait(sockets[0].recvResize(recv_sums_prefixs_dh_k[i]));
+  }
+  spdlog::info("recv: recv_prefixs_dh_k 接收完成 ");
+
+  lp_timer.start();
+  bool temp;
+  for (auto iter : recv_sums_prefixs_dh_k) {
+    for (auto key : iter) {
+      auto it = sender_prefixes_dh_k.find(key);
+      if (it != sender_prefixes_dh_k.end()) {
+        psi_ca_result += 1;
       }
     }
   }
-  lp_timer.end("recv_if_match_decoding_total");
-  spdlog::info("recv if match okvs decoding 完成");
+  lp_timer.end("prefix_check");
 
-  ipcl::initializeContext("QAT");
-  ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
-  lp_timer.start();
-  auto add_res = ipcl::CipherText(if_match_pk, if_match_decode_ciphers) +
-                 if_match_random_ciphers;
-  lp_timer.end("recv_if_match_paillier_add");
-  ipcl::terminateContext();
-  spdlog::info("recv if match paillier add 完成");
-
-  coproto::sync_wait(sockets[0].flush());
-  coproto::sync_wait(sockets[0].send(if_match_count));
-  for (u64 i = 0; i < if_match_count; i++) {
-    coproto::sync_wait(
-        sockets[0].send(bignumer_to_block_vector(add_res.getElement(i))));
-  }
-  insert_commus("recv_if_match_ciphers", 0);
-  spdlog::info("recv if match ciphers 发送完成");
-
-  vector<block> if_match_hashes;
-  coproto::sync_wait(sockets[0].flush());
-  coproto::sync_wait(sockets[0].recvResize(if_match_hashes));
-  spdlog::info("recv if match hashes 接收完成");
-
-  cout << "if_match_hashes size: " << if_match_hashes.size() << endl;
-  cout << "if_match_random_hashes size: " << if_match_random_hashes.size()
-       << endl;
-
-  u64 protocol_count = 0;
-  for (auto tmp : if_match_hashes) {
-    if (if_match_random_hashes.find(tmp) != if_match_random_hashes.end()) {
-      protocol_count++;
-    }
-  }
-
-  psi_ca_result = protocol_count;
+  merge_timer(lp_timer);
 }

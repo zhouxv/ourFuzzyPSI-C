@@ -23,12 +23,11 @@ public:
   // 一些核心对象的引用
   vector<pt> &pts; // 点集
   const ipcl::PublicKey pk;
-  const ipcl::PublicKey if_match_pk;
-  const ipcl::PrivateKey if_match_sk;
+  const DH25519_number dh_sk;
   vector<coproto::LocalAsyncSocket> &sockets;
 
   // 计算的一些参数
-  OmegaUTable::ParamType OMEGA_PARAM;
+  OmegaTable::ParamType OMEGA_PARAM;
   IfMatchParamTable::ParamType IF_MATCH_PARAM;
   u64 SIDE_LEN;  // 直径
   u64 BLK_CELLS; // 2^DIM
@@ -40,16 +39,23 @@ public:
   vector<block> random_hashes;     // L_inf, L_p getValue 使用
   ipcl::CipherText random_ciphers; // L_inf, L_p getValue 使用
 
-  vector<u64> random_sums;                       // L_p if match 使用
-  vector<vector<block>> lp_if_match_pre_ciphers; // L_p if match使用
+  vector<u64> random_sums; // L_p if match 使用
+  vector<vector<DH25519_point>> sender_random_prefixes_dh;
+
+  void clear() {
+    for (auto socket : sockets) {
+      socket.mImpl->mBytesSent = 0;
+    }
+    commus.clear();
+    senderTimer.clear();
+  }
 
   FPSISender(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
-             vector<pt> &pts, ipcl::PublicKey pk, ipcl::PublicKey if_match_pk,
-             ipcl::PrivateKey if_match_sk,
+             vector<pt> &pts, ipcl::PublicKey pk, DH25519_number dh_sk,
              vector<coproto::LocalAsyncSocket> &sockets)
       : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
-        THREAD_NUM(thread_num), pts(pts), pk(pk), if_match_pk(if_match_pk),
-        if_match_sk(if_match_sk), sockets(sockets) {
+        THREAD_NUM(thread_num), pts(pts), pk(pk), dh_sk(dh_sk),
+        sockets(sockets) {
     // 参数初始化
     OMEGA_PARAM = get_omega_params(metric, delta);
     if (metric != 0)
@@ -59,16 +65,28 @@ public:
     DELTA_L2 = delta * delta;
   };
 
+  // L_inf test param
   FPSISender(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
-             vector<pt> &pts, ipcl::PublicKey pk, ipcl::PublicKey if_match_pk,
-             ipcl::PrivateKey if_match_sk, OmegaUTable::ParamType param,
+             vector<pt> &pts, ipcl::PublicKey pk, DH25519_number dh_sk,
+             OmegaTable::ParamType param,
              vector<coproto::LocalAsyncSocket> &sockets)
       : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
-        THREAD_NUM(thread_num), pts(pts), pk(pk), if_match_pk(if_match_pk),
-        if_match_sk(if_match_sk), OMEGA_PARAM(param), sockets(sockets) {
-    // 参数初始化
-    if (metric != 0)
-      IF_MATCH_PARAM = get_if_match_params(metric, delta);
+        THREAD_NUM(thread_num), pts(pts), pk(pk), dh_sk(dh_sk),
+        OMEGA_PARAM(param), sockets(sockets) {
+    SIDE_LEN = 2 * delta;
+    BLK_CELLS = 1 << dim;
+    DELTA_L2 = delta * delta;
+  };
+
+  // Lp test param
+  FPSISender(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
+             vector<pt> &pts, ipcl::PublicKey pk, DH25519_number dh_sk,
+             OmegaTable::ParamType param,
+             IfMatchParamTable::ParamType if_match_param,
+             vector<coproto::LocalAsyncSocket> &sockets)
+      : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
+        THREAD_NUM(thread_num), pts(pts), pk(pk), dh_sk(dh_sk),
+        OMEGA_PARAM(param), IF_MATCH_PARAM(if_match_param), sockets(sockets) {
     SIDE_LEN = 2 * delta;
     BLK_CELLS = 1 << dim;
     DELTA_L2 = delta * delta;
@@ -85,23 +103,23 @@ public:
   void msg_lp_low();
 
   // 计时器
-  simpleTimer recvTimer;
+  simpleTimer senderTimer;
 
-  void print_time() { recvTimer.print(); }
+  void print_time() { senderTimer.print(); }
 
-  void merge_timer(simpleTimer &other) { recvTimer.merge(other); }
+  void merge_timer(simpleTimer &other) { senderTimer.merge(other); }
 
   // 通信计数
-  std::vector<std::pair<string, u64>> commus;
+  std::vector<std::pair<string, double>> commus;
   void print_commus() {
     for (auto &x : commus) {
-      spdlog::info("{}: {} 字节; {} MB", x.first, x.second,
-                   x.second / 1024.0 / 1024.0);
+      spdlog::info("{}: {} MB", x.first, x.second);
     }
   }
 
   void insert_commus(const string &msg, u64 socket_index) {
-    commus.push_back({msg, sockets[socket_index].bytesSent()});
+    commus.push_back(
+        {msg, sockets[socket_index].bytesSent() / 1024.0 / 1024.0});
     sockets[socket_index].mImpl->mBytesSent = 0;
   }
 };

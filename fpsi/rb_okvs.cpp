@@ -137,7 +137,6 @@ RBOKVSParam RBOKVS::getParams(const u64 &n, const double &epsilon,
     if (nn <= 10) {
       param.mBandWidth = std::min<u64>(
           static_cast<u64>((stasSecParam + 6.296) / 0.2747), param.numCols());
-      cout << "param.mBandWidth" << param.mBandWidth << endl;
       if (param.mBandWidth < 64)
         param.mBandWidth = 64;
     } else if (nn <= 14) {
