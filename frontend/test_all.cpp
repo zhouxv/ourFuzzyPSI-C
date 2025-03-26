@@ -76,7 +76,7 @@ void test_decompose_correction(CLP &cmd) {
   auto count = cmd.getOr("n", 1000);
   auto t = cmd.getOr("t", 17);
 
-  auto param = OmegaUTable::getSelectedParam(t);
+  auto param = OmegaLpTable::getSelectedParam(t);
 
   vector<vector<string>> res(count);
   vector<vector<string>> res1(count);

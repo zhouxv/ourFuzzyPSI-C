@@ -13,6 +13,9 @@
 using namespace oc;
 using namespace std;
 
+using DH25519_point = osuCrypto::Sodium::Monty25519;
+using DH25519_number = osuCrypto::Sodium::Scalar25519;
+
 // 简易计时器
 typedef std::chrono::high_resolution_clock::time_point tVar;
 #define tNow() std::chrono::high_resolution_clock::now()
@@ -91,7 +94,7 @@ vector<u64> sum_combinations(const oc::span<u32> &results, u64 dim);
 u64 fast_pow(u64 base, u64 exp);
 u64 combination(u64 n, u64 k);
 
-const OmegaUTable::ParamType get_omega_params(u64 metric, u64 delta);
+const OmegaLpTable::ParamType get_omega_params(u64 metric, u64 delta);
 
 const IfMatchParamTable::ParamType get_if_match_params(u64 metric, u64 delta);
 
@@ -277,3 +280,13 @@ inline void padding_bignumers(vector<BigNumber> &nums, u64 count,
     nums.push_back(block_vector_to_bignumer(blks));
   }
 }
+
+// 用于排序
+struct Monty25519Hash {
+  std::size_t operator()(const osuCrypto::Sodium::Monty25519 &point) const {
+    std::array<u8, 32> bytes;
+    point.toBytes(bytes.data()); // 假设 Monty25519 提供 toBytes 方法
+    return std::hash<std::string_view>()(
+        std::string_view(reinterpret_cast<const char *>(bytes.data()), 32));
+  }
+};

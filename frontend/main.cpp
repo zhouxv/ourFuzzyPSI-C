@@ -15,7 +15,12 @@ int main(int argc, char **argv) {
   CLP cmd;
   cmd.parse(argc, argv);
 
-  spdlog::set_level(spdlog::level::info);
+  if (cmd.isSet("debug")) {
+    spdlog::set_level(spdlog::level::debug);
+  } else {
+    spdlog::set_level(spdlog::level::info);
+  }
+
   spdlog::set_pattern("[%l] %v");
 
   if (cmd.isSet("single")) {
