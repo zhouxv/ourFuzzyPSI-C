@@ -94,7 +94,7 @@ vector<u64> sum_combinations(const oc::span<u32> &results, u64 dim);
 u64 fast_pow(u64 base, u64 exp);
 u64 combination(u64 n, u64 k);
 
-const OmegaLpTable::ParamType get_omega_params(u64 metric, u64 delta);
+const OmegaTable::ParamType get_omega_params(u64 metric, u64 delta);
 
 const IfMatchParamTable::ParamType get_if_match_params(u64 metric, u64 delta);
 

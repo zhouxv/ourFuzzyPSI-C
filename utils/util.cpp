@@ -270,17 +270,14 @@ u64 fast_pow(u64 base, u64 exp) {
 /// assert_eq!(merged, vec![(0, 2), (3, 5), (6, 8)]);
 /// ```
 
-const OmegaLpTable::ParamType get_omega_params(u64 metric, u64 delta) {
+const OmegaTable::ParamType get_omega_params(u64 metric, u64 delta) {
   if (metric < 0 || metric > 2) {
     throw invalid_argument("get_omega_params: Invalid metric value.");
   }
-  if (metric == 0) {
-    u64 t = delta * 2 + 1;
-    return OmegaTable::getSelectedParam(t);
-  } else {
-    u64 t = delta + 1;
-    return OmegaLpTable::getSelectedParam(t);
-  }
+
+  auto t = (metric == 0) ? (delta * 2 + 1) : (delta + 1);
+
+  return OmegaTable::getSelectedParam(t);
 }
 
 const IfMatchParamTable::ParamType get_if_match_params(u64 metric, u64 delta) {

@@ -26,9 +26,9 @@ int main(int argc, char **argv) {
   if (cmd.isSet("single")) {
     run_low_dimension(cmd);
     return 0;
+  } else {
+    test_low_dimension(cmd);
   }
-
-  test_low_dimension(cmd);
 
   return 0;
 }

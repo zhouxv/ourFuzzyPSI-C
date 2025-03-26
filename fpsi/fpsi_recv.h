@@ -91,7 +91,7 @@ public:
   // Lp test param
   FPSIRecv(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
            vector<pt> &pts, ipcl::PublicKey pk, ipcl::PrivateKey sk,
-           DH25519_number dh_sk, OmegaLpTable::ParamType param,
+           DH25519_number dh_sk, OmegaTable::ParamType param,
            IfMatchParamTable::ParamType if_match_param,
            vector<coproto::LocalAsyncSocket> &sockets)
       : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),

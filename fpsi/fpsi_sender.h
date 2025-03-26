@@ -27,7 +27,7 @@ public:
   vector<coproto::LocalAsyncSocket> &sockets;
 
   // 计算的一些参数
-  OmegaLpTable::ParamType OMEGA_PARAM;
+  OmegaTable::ParamType OMEGA_PARAM;
   IfMatchParamTable::ParamType IF_MATCH_PARAM;
   u64 SIDE_LEN;  // 直径
   u64 BLK_CELLS; // 2^DIM
@@ -81,7 +81,7 @@ public:
   // Lp test param
   FPSISender(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
              vector<pt> &pts, ipcl::PublicKey pk, DH25519_number dh_sk,
-             OmegaLpTable::ParamType param,
+             OmegaTable::ParamType param,
              IfMatchParamTable::ParamType if_match_param,
              vector<coproto::LocalAsyncSocket> &sockets)
       : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
