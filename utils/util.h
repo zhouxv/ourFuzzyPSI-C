@@ -69,7 +69,7 @@ public:
 using pt = vector<u64>;
 
 // OKVS 参数
-const u64 OKVS_LAMBDA = 10;
+const u64 OKVS_LAMBDA = 40;
 const double OKVS_EPSILON = 0.1;
 const block OKVS_SEED = oc::block(6800382592637124185);
 
