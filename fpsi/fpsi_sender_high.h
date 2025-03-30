@@ -12,7 +12,7 @@
 #include "utils/params_selects.h"
 #include "utils/util.h"
 
-class FPSISender {
+class FPSISenderH {
 public:
   // 协议的一些参数
   const u64 DIM;        // 维度
@@ -30,18 +30,16 @@ public:
   // 计算的一些参数
   OmegaTable::ParamType OMEGA_PARAM;
   IfMatchParamTable::ParamType IF_MATCH_PARAM;
+  FuzzyMappingParamTable::ParamType FUZZY_MAPPING_PARAM;
   u64 SIDE_LEN;  // 直径
   u64 BLK_CELLS; // 2^DIM
   u64 DELTA_L2;  // delta的平方
 
-  // 预计算的数据
-  ipcl::CipherText lp_pre_ciphers; // getValue 使用
-
-  vector<block> random_hashes;     // L_inf, L_p getValue 使用
-  ipcl::CipherText random_ciphers; // L_inf, L_p getValue 使用
-
-  vector<u64> random_sums; // L_p if match 使用
-  vector<vector<DH25519_point>> sender_random_prefixes_dh;
+  // 预处理数据
+  ipcl::CipherText fm_masks_0_ciphers;
+  ipcl::CipherText fm_masks_1_ciphers;
+  vector<BigNumber> masks_0_values;
+  vector<BigNumber> masks_1_values;
 
   void clear() {
     for (auto socket : sockets) {
@@ -51,9 +49,9 @@ public:
     senderTimer.clear();
   }
 
-  FPSISender(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
-             vector<pt> &pts, ipcl::PublicKey pk, DH25519_number dh_sk,
-             vector<coproto::LocalAsyncSocket> &sockets)
+  FPSISenderH(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
+              vector<pt> &pts, ipcl::PublicKey pk, DH25519_number dh_sk,
+              vector<coproto::LocalAsyncSocket> &sockets)
       : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
         THREAD_NUM(thread_num), pts(pts), pk(pk), dh_sk(dh_sk),
         sockets(sockets) {
@@ -66,42 +64,19 @@ public:
     DELTA_L2 = delta * delta;
   };
 
-  // L_inf test param
-  FPSISender(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
-             vector<pt> &pts, ipcl::PublicKey pk, DH25519_number dh_sk,
-             OmegaTable::ParamType param,
-             vector<coproto::LocalAsyncSocket> &sockets)
-      : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
-        THREAD_NUM(thread_num), pts(pts), pk(pk), dh_sk(dh_sk),
-        OMEGA_PARAM(param), sockets(sockets) {
-    SIDE_LEN = 2 * delta;
-    BLK_CELLS = 1 << dim;
-    DELTA_L2 = delta * delta;
-  };
-
-  // Lp test param
-  FPSISender(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
-             vector<pt> &pts, ipcl::PublicKey pk, DH25519_number dh_sk,
-             OmegaTable::ParamType param,
-             IfMatchParamTable::ParamType if_match_param,
-             vector<coproto::LocalAsyncSocket> &sockets)
-      : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
-        THREAD_NUM(thread_num), pts(pts), pk(pk), dh_sk(dh_sk),
-        OMEGA_PARAM(param), IF_MATCH_PARAM(if_match_param), sockets(sockets) {
-    SIDE_LEN = 2 * delta;
-    BLK_CELLS = 1 << dim;
-    DELTA_L2 = delta * delta;
-  };
-
   /// 离线阶段
   void init();
-  void init_inf_low();
-  void init_lp_low();
+  void init_inf();
+  void init_lp();
 
   /// 在线阶段
   void msg();
-  void msg_inf_low();
-  void msg_lp_low();
+  void msg_inf();
+  void msg_lp();
+
+  // fuzzy mapping
+  void fuzzy_mapping_offline();
+  void fuzzy_mapping_online();
 
   // 计时器
   simpleTimer senderTimer;

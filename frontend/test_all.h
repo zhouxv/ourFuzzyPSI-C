@@ -1,6 +1,6 @@
 
-#pragma one
-#include "util.h"
+#pragma once
+#include "config.h"
 #include <cryptoTools/Common/CLP.h>
 #include <string>
 #include <vector>
@@ -19,4 +19,12 @@ bool validate_prefix_tree(const std::vector<std::string> &prefixes,
                           osuCrypto::u64 target_max);
 std::pair<u64, u64> prefix_to_range(const std::string &prefix, u64 bits);
 
-void test_u64_random(CLP &cmd);
+void test_u64_random_he(CLP &cmd);
+
+void test_psm(CLP &cmd);
+
+void test_split(CLP &cmd);
+
+void test_pis_part(CLP &cmd);
+
+void test_pis(CLP &cmd);

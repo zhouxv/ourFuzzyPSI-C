@@ -9,11 +9,10 @@
 #include <ipcl/pub_key.hpp>
 
 #include "config.h"
-#include "rb_okvs/rb_okvs.h"
 #include "utils/params_selects.h"
 #include "utils/util.h"
 
-class FPSIRecv {
+class FPSIRecvH {
 public:
   // 协议的一些参数
   const u64 DIM;        // 维度
@@ -32,6 +31,7 @@ public:
   // 计算的一些参数
   pair<set<u64>, u64> OMEGA_PARAM;
   IfMatchParamTable::ParamType IF_MATCH_PARAM;
+  FuzzyMappingParamTable::ParamType FUZZY_MAPPING_PARAM;
   u64 SIDE_LEN;  // 直径
   u64 BLK_CELLS; // 2^DIM
   u64 DELTA_L2;  // delta的平方
@@ -49,18 +49,14 @@ public:
     recvTimer.clear();
   }
 
-  // OKVS
-  RBOKVS rb_okvs;
-  vector<RBOKVS> rb_okvs_vec;
-
-  // 预计算的密文
-  vector<vector<vector<block>>> inf_value_pre_ciphers; // L_inf使用
-  vector<vector<block>> lp_value_pre_ciphers;          // L_p getList 使用
+  // 预处理数据
+  vector<u64> IDs;
+  vector<vector<vector<block>>> get_id_encodings;
 
   // 构造函数
-  FPSIRecv(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
-           vector<pt> &pts, ipcl::PublicKey pk, ipcl::PrivateKey sk,
-           DH25519_number dh_sk, vector<coproto::LocalAsyncSocket> &sockets)
+  FPSIRecvH(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
+            vector<pt> &pts, ipcl::PublicKey pk, ipcl::PrivateKey sk,
+            DH25519_number dh_sk, vector<coproto::LocalAsyncSocket> &sockets)
       : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
         THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk), dh_sk(dh_sk),
         sockets(sockets) {
@@ -75,46 +71,20 @@ public:
     OKVS_SIZE = pt_num * BLK_CELLS * OMEGA_PARAM.second;
   };
 
-  // Linf test param
-  FPSIRecv(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
-           vector<pt> &pts, ipcl::PublicKey pk, ipcl::PrivateKey sk,
-           DH25519_number dh_sk, OmegaTable::ParamType param,
-           vector<coproto::LocalAsyncSocket> &sockets)
-      : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
-        THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk), dh_sk(dh_sk),
-        OMEGA_PARAM(param), sockets(sockets) {
-    SIDE_LEN = 2 * delta;
-    BLK_CELLS = 1 << dim;
-    DELTA_L2 = delta * delta;
-    OKVS_COUNT = (metric == 0) ? dim : 2 * dim;
-    OKVS_SIZE = pt_num * BLK_CELLS * OMEGA_PARAM.second;
-  };
-
-  // Lp test param
-  FPSIRecv(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
-           vector<pt> &pts, ipcl::PublicKey pk, ipcl::PrivateKey sk,
-           DH25519_number dh_sk, OmegaTable::ParamType param,
-           IfMatchParamTable::ParamType if_match_param,
-           vector<coproto::LocalAsyncSocket> &sockets)
-      : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
-        THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk), dh_sk(dh_sk),
-        OMEGA_PARAM(param), IF_MATCH_PARAM(if_match_param), sockets(sockets) {
-    SIDE_LEN = 2 * delta;
-    BLK_CELLS = 1 << dim;
-    DELTA_L2 = delta * delta;
-    OKVS_COUNT = (metric == 0) ? dim : 2 * dim;
-    OKVS_SIZE = pt_num * BLK_CELLS * OMEGA_PARAM.second;
-  };
-
   /// offline
   void init();
-  void init_inf_low();
-  void init_lp_low();
+  void init_inf();
+  void init_lp();
 
   /// online
   void msg();
-  void msg_inf_low();
-  void msg_lp_low();
+  void msg_inf();
+  void msg_lp();
+
+  // fuzzy mapping
+  void fuzzy_mapping_offline();
+  void fuzzy_mapping_online();
+  void get_ID();
 
   // 计时器
   simpleTimer recvTimer;

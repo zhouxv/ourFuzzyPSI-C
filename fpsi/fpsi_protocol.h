@@ -1,11 +1,13 @@
 #pragma one
-#include "params_selects.h"
+#include "utils/params_selects.h"
 #include <cryptoTools/Common/CLP.h>
 #include <cryptoTools/Common/Defines.h>
 
 using namespace oc;
 
 void run_low_dimension(const oc::CLP &cmd);
+
+void run_high_dimension(const oc::CLP &cmd);
 
 void test_low_dimension(const oc::CLP &cmd);
 

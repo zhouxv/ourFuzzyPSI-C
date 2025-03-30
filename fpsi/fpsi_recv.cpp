@@ -14,10 +14,10 @@
 #include <ipcl/plaintext.hpp>
 #include <spdlog/spdlog.h>
 
+#include "config.h"
 #include "fpsi_recv.h"
-#include "rb_okvs.h"
-#include "set_dec.h"
-#include "util.h"
+#include "rb_okvs/rb_okvs.h"
+#include "utils/set_dec.h"
 
 /// offline
 void FPSIRecv::init() { (METRIC == 0) ? init_inf_low() : init_lp_low(); }

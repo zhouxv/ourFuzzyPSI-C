@@ -7,7 +7,7 @@
 #include <cryptoTools/Crypto/PRNG.h>
 #include <ipcl/ipcl.hpp>
 
-#include "util.h"
+#include "config.h"
 
 #include "fpsi_protocol.h"
 #include "test_all.h"
@@ -67,10 +67,22 @@ int main(int argc, char **argv) {
       test_bitset();
       return 0;
     case 6:
-      test_u64_random(cmd);
+      test_u64_random_he(cmd);
       return 0;
     case 7:
       test_low_bound(cmd);
+      return 0;
+    case 8:
+      test_psm(cmd);
+      return 0;
+    case 9:
+      test_split(cmd);
+      return 0;
+    case 10:
+      test_pis_part(cmd);
+      return 0;
+    case 11:
+      test_pis(cmd);
       return 0;
     }
   }

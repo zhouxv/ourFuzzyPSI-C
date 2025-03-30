@@ -7,34 +7,10 @@
 #include <cryptoTools/Crypto/SodiumCurve.h>
 #include <ipcl/bignum.h>
 
-#include "util.h"
+#include "config.h"
 
 #ifndef CRYPTOTOOLS_RBOKVS_H
 #define CRYPTOTOOLS_RBOKVS_H
-
-// Rist25519: Ristretto素数阶椭圆曲线群上的点
-using Rist25519_point = osuCrypto::Sodium::Rist25519;
-// 基于 Curve25519 的一个有限域数（标量）
-using Rist25519_number = osuCrypto::Sodium::Prime25519;
-
-const size_t POINT_LENGTH_IN_BYTE = sizeof(Rist25519_point);
-using Rist25519_point_in_bytes = std::array<oc::u8, POINT_LENGTH_IN_BYTE>;
-
-// Rist25519 OKVS的一些参数
-const oc::u64 EC_CIPHER_SIZE_IN_NUMBER = 2;
-const Rist25519_point dash(oc::block(70));
-const Rist25519_point ZERO_POINT(dash - dash);
-
-// PAILLIER OKVS需要的一些参数
-const oc::u32 PAILLIER_KEY_SIZE_IN_BIT = 2048;
-const oc::u32 PAILLIER_CIPHER_SIZE_IN_BLOCK =
-    ((PAILLIER_KEY_SIZE_IN_BIT * 2) / 128);
-const oc::u32 PAILLIER_CIPHER_SIZE_IN_BYTE = PAILLIER_CIPHER_SIZE_IN_BLOCK * 16;
-
-// 设置block的种子
-const oc::block seed = oc::block(7071);
-// OKVS lambda的设置
-const oc::u64 lambda = 40ull;
 
 using element = oc::block;
 
