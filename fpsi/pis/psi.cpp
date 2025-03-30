@@ -66,20 +66,22 @@ Recv_PSM PIS_recv(vector<u64> &eles, const vector<vector<u64>> &indexs) {
   auto spilt_vecs = split_vertor(eles, indexs);
 
   auto psm_num = spilt_vecs.size();
+  // 特化的debug方法, 因为输入的size是有规律的
   auto half_size = size / 2;
 
-  // for (u64 i = 0; i < psm_num; i++) {
-  //   for (u64 j = 0; j < half_size; j++) {
-  //     // spdlog::debug("[{}]: {}", indexs[i][j], spilt_vecs[i][j]);
-  //     cout << "[" << indexs[i][j] << "]: " << spilt_vecs[i][j] << "; ";
-  //   }
-  //   cout << endl;
-  // }
+  if (half_size == 4) {
+    half_size = 8;
+    for (auto vec : spilt_vecs) {
+      for (u64 j = 0; j < 4; j++)
+        vec.push_back(0);
+    }
+  }
 
   // 后面用u64, 所以不能超过64
   assert(psm_num < 64);
 
   res_shares.assign(half_size, 0);
+
   compare->reinit(half_size);
 
   vector<u8> s_vec(psm_num, 0);
@@ -157,6 +159,10 @@ Sender_PSM PIS_send(u64 data, u64 size) {
   */
   u64 psm_num = log2(size);
   auto half_size = size / 2;
+  if (half_size == 4) {
+    half_size = 8;
+  }
+
   res_shares.assign(half_size, 0);
   compare->reinit(half_size);
 

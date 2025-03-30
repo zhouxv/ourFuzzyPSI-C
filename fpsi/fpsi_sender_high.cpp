@@ -31,8 +31,8 @@ void FPSISenderH::fuzzy_mapping_offline() {
 
   PRNG prng((block(oc::sysRandomSeed())));
   for (u64 i = 0; i < mask_size; i++) {
-    auto tmp0 = prng.get<u64>();
-    auto tmp1 = prng.get<u64>();
+    u64 tmp0 = prng.get<u64>() / DIM;
+    u64 tmp1 = prng.get<u64>() / DIM;
     masks_0_values_u64[i] = tmp0;
     masks_1_values_u64[i] = tmp1;
     masks_0_values[i] = BigNumber(reinterpret_cast<Ipp32u *>(&tmp0), 2);
@@ -92,10 +92,6 @@ void FPSISenderH::fuzzy_mapping_online() {
   mask0.reserve(PTS_NUM * DIM * padding_count);
   mask1.reserve(PTS_NUM * DIM * padding_count);
 
-  spdlog::debug(
-      "Fuzzy Mapping log_max_mu: {}, padding_cout: {}, total count: {}",
-      log_max_mu, padding_count, PTS_NUM * DIM * padding_count);
-
   auto padding_total = 0;
   auto mask_index = 0;
 
@@ -116,7 +112,6 @@ void FPSISenderH::fuzzy_mapping_online() {
         v.push_back(bns[1]);
       }
 
-      cout << "mask_index: " << mask_index << endl;
       for (u64 k = 0; k < padding_count; k++) {
         mask0.push_back(fm_masks_0_ciphers[mask_index]);
         mask1.push_back(fm_masks_1_ciphers[mask_index]);
@@ -130,10 +125,6 @@ void FPSISenderH::fuzzy_mapping_online() {
   }
   fm_timer.end("sender_fm_decompose");
   spdlog::info("sender fuzzy mapping decompose ok");
-
-  spdlog::debug(
-      "u.size(): {}, v.size(): {}, mask0.size(): {}, mask1.size(): {}",
-      u.size(), v.size(), mask0.size(), mask1.size());
 
   fm_timer.start();
   auto u_ = ipcl::CipherText(pk, u) + ipcl::CipherText(pk, mask0);
@@ -181,10 +172,6 @@ void FPSISenderH::fuzzy_mapping_online() {
   }
 
   merge_timer(fm_timer);
-
-  for (u64 i = 0; i < PTS_NUM; i++) {
-    spdlog::debug("sender id: {}", IDs[i]);
-  }
 };
 
 /// 离线阶段

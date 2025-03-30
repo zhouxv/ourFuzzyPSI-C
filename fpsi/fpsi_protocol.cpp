@@ -190,7 +190,7 @@ void run_high_dimension(const CLP &cmd) {
   FPSIRecvH recv(DIM, DELTA, recv_size, METRIC, 1, recv_pts, psi_key.pub_key,
                  psi_key.priv_key, recv_dh_k, socketPair0);
   FPSISenderH sender(DIM, DELTA, send_size, METRIC, 1, send_pts,
-                     psi_key.pub_key, send_dh_k, socketPair1);
+                     psi_key.pub_key, psi_key.priv_key, send_dh_k, socketPair1);
 
   // offline
   timer.start();

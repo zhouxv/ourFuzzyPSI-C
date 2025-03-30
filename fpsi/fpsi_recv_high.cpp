@@ -34,7 +34,7 @@ void FPSIRecvH::get_ID() {
 
   PRNG prng((block(oc::sysRandomSeed())));
   for (u64 i = 0; i < PTS_NUM * DIM; i++) {
-    random_values[i] = prng.get<u64>();
+    random_values[i] = prng.get<u64>() / DIM;
     random_bns[i] = BigNumber(reinterpret_cast<Ipp32u *>(&random_values[i]), 2);
   }
 
@@ -84,15 +84,15 @@ void FPSIRecvH::get_ID() {
   IDs.resize(PTS_NUM, 0);
   u64 pt_index = 0;
 
-  for (const auto &tmp : pts) {
-    for (u64 i = 0; i < DIM; i++) {
-      auto it = lower_bound(intervals[i].begin(), intervals[i].end(), tmp[i],
-                            compare_lambda);
+  for (const auto &point : pts) {
+    for (u64 dim_index = 0; dim_index < DIM; dim_index++) {
+      auto it = std::lower_bound(intervals[dim_index].begin(),
+                                 intervals[dim_index].end(), point[dim_index],
+                                 compare_lambda);
 
-      if (it != intervals[i].end() && it->first <= tmp[i]) {
-        auto j = distance(intervals[i].begin(), it);
-
-        IDs[pt_index] += random_values[i * PTS_NUM + j];
+      if (it != intervals[dim_index].end() && it->first <= point[dim_index]) {
+        auto j = distance(intervals[dim_index].begin(), it);
+        IDs[pt_index] += random_values[dim_index * PTS_NUM + j];
       } else {
         throw runtime_error("recv getID random error");
       }
@@ -121,15 +121,16 @@ void FPSIRecvH::get_ID() {
     vector<vector<block>> values;
     keys.reserve(okvs_mN);
 
-    for (u64 i = 0; i < intervals[dim_index].size(); i++) {
-      auto decs =
-          set_dec(intervals[dim_index][i].first, intervals[dim_index][i].second,
-                  FUZZY_MAPPING_PARAM.first);
+    for (u64 interval_index = 0; interval_index < intervals[dim_index].size();
+         interval_index++) {
+      auto decs = set_dec(intervals[dim_index][interval_index].first,
+                          intervals[dim_index][interval_index].second,
+                          FUZZY_MAPPING_PARAM.first);
       for (string &dec : decs) {
         keys.push_back(get_key_from_dim_dec(dim_index, dec));
-        values.push_back(
-            bignumers_to_block_vector({random_ciphers[dim_index * PTS_NUM + i],
-                                       zero_ciphers[dim_index * PTS_NUM + i]}));
+        values.push_back(bignumers_to_block_vector(
+            {random_ciphers[dim_index * PTS_NUM + interval_index],
+             zero_ciphers[dim_index * PTS_NUM + interval_index]}));
       }
     }
     padding_keys(keys, okvs_mN);
@@ -210,14 +211,13 @@ void FPSIRecvH::fuzzy_mapping_online() {
 
   for (u64 i = 0; i < PTS_NUM; i++) {
     u64 pt_index = i * DIM * every_size;
+
     for (u64 j = 0; j < DIM; j++) {
       u64 dim_index = j * every_size;
       u64 v_dec_u64_index = i * DIM + j;
       v_dec_u64[v_dec_u64_index].reserve(every_size);
       for (u64 k = 0; k < every_size; k++) {
-        // spdlog::debug(
-        //     "{} {} v_dec_u64_index: {} ; pt_index: {} ; dim_index: {}", i, j,
-        //     v_dec_u64_index, pt_index, dim_index);
+
         auto tmp = v_dec_vec.getElementVec(pt_index + dim_index + k);
         v_dec_u64[v_dec_u64_index].push_back(((u64)tmp[1] << 32) | tmp[0]);
       }
@@ -246,13 +246,17 @@ void FPSIRecvH::fuzzy_mapping_online() {
   vector<u64> pis_res(dec_vec_num, 0);
   for (u64 i = 0; i < dec_vec_num; i++) {
     auto tmp = s_vsc[i] ^ ot_res[i];
-    pis_res[i] = tmp.get<u64>(0);
+    pis_res[i] = tmp.get<u64>(0) % every_size;
   }
 
   vector<u64> fm_res(PTS_NUM, 0);
   for (u64 i = 0; i < PTS_NUM; i++) {
     for (u64 j = 0; j < DIM; j++) {
-      fm_res[i] += pis_res[i * DIM + j];
+      auto index = pis_res[i * DIM + j];
+      auto tmp = u_dec_vec.getElementVec(i * DIM * every_size + j * every_size +
+                                         index);
+
+      fm_res[i] += ((u64)tmp[1] << 32 | tmp[0]);
     }
   }
 
@@ -260,10 +264,6 @@ void FPSIRecvH::fuzzy_mapping_online() {
   insert_commus("recv_fm_res", 0);
 
   merge_timer(fm_timer);
-
-  for (u64 i = 0; i < PTS_NUM; i++) {
-    spdlog::debug("recv id: {}", IDs[i]);
-  }
 }
 
 /// offline

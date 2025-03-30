@@ -24,6 +24,7 @@ public:
   // 一些核心对象的引用
   vector<pt> &pts; // 点集
   const ipcl::PublicKey pk;
+  const ipcl::PrivateKey sk;
   const DH25519_number dh_sk;
   vector<coproto::LocalAsyncSocket> &sockets;
 
@@ -54,10 +55,10 @@ public:
   }
 
   FPSISenderH(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
-              vector<pt> &pts, ipcl::PublicKey pk, DH25519_number dh_sk,
-              vector<coproto::LocalAsyncSocket> &sockets)
+              vector<pt> &pts, ipcl::PublicKey pk, ipcl::PrivateKey sk,
+              DH25519_number dh_sk, vector<coproto::LocalAsyncSocket> &sockets)
       : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
-        THREAD_NUM(thread_num), pts(pts), pk(pk), dh_sk(dh_sk),
+        THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk), dh_sk(dh_sk),
         sockets(sockets) {
     // 参数初始化
     OMEGA_PARAM = get_omega_params(metric, delta);
