@@ -38,8 +38,12 @@ public:
   // 预处理数据
   ipcl::CipherText fm_masks_0_ciphers;
   ipcl::CipherText fm_masks_1_ciphers;
+  vector<u64> masks_0_values_u64;
+  vector<u64> masks_1_values_u64;
   vector<BigNumber> masks_0_values;
   vector<BigNumber> masks_1_values;
+
+  vector<u64> IDs;
 
   void clear() {
     for (auto socket : sockets) {

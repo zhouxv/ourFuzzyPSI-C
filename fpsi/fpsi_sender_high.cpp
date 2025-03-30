@@ -16,6 +16,7 @@
 
 #include "config.h"
 #include "fpsi_sender_high.h"
+#include "pis/pis.h"
 #include "rb_okvs/rb_okvs.h"
 #include "utils/set_dec.h"
 
@@ -25,13 +26,17 @@ void FPSISenderH::fuzzy_mapping_offline() {
   auto mask_size = PTS_NUM * DIM;
   masks_0_values.resize(mask_size);
   masks_1_values.resize(mask_size);
+  masks_0_values_u64.resize(mask_size);
+  masks_1_values_u64.resize(mask_size);
 
   PRNG prng((block(oc::sysRandomSeed())));
   for (u64 i = 0; i < mask_size; i++) {
     auto tmp0 = prng.get<u64>();
     auto tmp1 = prng.get<u64>();
+    masks_0_values_u64[i] = tmp0;
+    masks_1_values_u64[i] = tmp1;
     masks_0_values[i] = BigNumber(reinterpret_cast<Ipp32u *>(&tmp0), 2);
-    masks_0_values[i] = BigNumber(reinterpret_cast<Ipp32u *>(&tmp1), 2);
+    masks_1_values[i] = BigNumber(reinterpret_cast<Ipp32u *>(&tmp1), 2);
   }
 
   ipcl::initializeContext("QAT");
@@ -111,6 +116,7 @@ void FPSISenderH::fuzzy_mapping_online() {
         v.push_back(bns[1]);
       }
 
+      cout << "mask_index: " << mask_index << endl;
       for (u64 k = 0; k < padding_count; k++) {
         mask0.push_back(fm_masks_0_ciphers[mask_index]);
         mask1.push_back(fm_masks_1_ciphers[mask_index]);
@@ -149,7 +155,36 @@ void FPSISenderH::fuzzy_mapping_online() {
   // PIS 协议
   /*--------------------------------------------------------------------------------------------------------------------------------*/
 
+  fm_timer.start();
+  vector<array<block, 2>> pis_msg;
+  pis_msg.reserve(PTS_NUM * DIM);
+
+  for (u64 i = 0; i < PTS_NUM * DIM; i++) {
+    auto tmp = PIS_send(masks_1_values_u64[i], padding_count);
+    pis_msg.push_back(tmp.q_arr);
+  }
+  fm_timer.end("sender_PIS_pre");
+
+  fm_timer.start();
+  PIS_sender_KKRT_batch(pis_msg, sockets[0]);
+  fm_timer.end("sender_PIS_ot");
+
+  vector<u64> fm_res;
+  coproto::sync_wait(sockets[0].recvResize(fm_res));
+
+  IDs.assign(PTS_NUM, 0);
+  for (u64 i = 0; i < PTS_NUM; i++) {
+    IDs[i] = fm_res[i];
+    for (u64 j = 0; j < DIM; j++) {
+      IDs[i] -= masks_0_values_u64[i * DIM + j];
+    }
+  }
+
   merge_timer(fm_timer);
+
+  for (u64 i = 0; i < PTS_NUM; i++) {
+    spdlog::debug("sender id: {}", IDs[i]);
+  }
 };
 
 /// 离线阶段

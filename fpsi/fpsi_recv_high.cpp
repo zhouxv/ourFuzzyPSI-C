@@ -16,6 +16,7 @@
 
 #include "config.h"
 #include "fpsi_recv_high.h"
+#include "pis/pis.h"
 #include "rb_okvs/rb_okvs.h"
 #include "utils/set_dec.h"
 
@@ -192,12 +193,77 @@ void FPSIRecvH::fuzzy_mapping_online() {
   /*--------------------------------------------------------------------------------------------------------------------------------*/
 
   fm_timer.start();
-  auto v_dec = sk.decrypt(ipcl::CipherText(pk, v_));
+  auto u_dec_vec = sk.decrypt(ipcl::CipherText(pk, u_));
+  auto v_dec_vec = sk.decrypt(ipcl::CipherText(pk, v_));
   fm_timer.end("recv_fm_decrypt");
 
-  vector<vector<u64>> v_dec_u64;
+  u64 dec_vec_num = PTS_NUM * DIM;
+  u64 every_size = ciphers_size / dec_vec_num;
+  vector<vector<u64>> v_dec_u64(dec_vec_num);
+
+  // 获取明文
+  // vector<u64> plain_nums(res_size, 0);
+  // for (u64 i = 0; i < res_size; i++) {
+  //   auto tmp = plainText.getElementVec(i);
+  //   plain_nums[i] = ((u64)tmp[1] << 32) | tmp[0];
+  // }
+
+  for (u64 i = 0; i < PTS_NUM; i++) {
+    u64 pt_index = i * DIM * every_size;
+    for (u64 j = 0; j < DIM; j++) {
+      u64 dim_index = j * every_size;
+      u64 v_dec_u64_index = i * DIM + j;
+      v_dec_u64[v_dec_u64_index].reserve(every_size);
+      for (u64 k = 0; k < every_size; k++) {
+        // spdlog::debug(
+        //     "{} {} v_dec_u64_index: {} ; pt_index: {} ; dim_index: {}", i, j,
+        //     v_dec_u64_index, pt_index, dim_index);
+        auto tmp = v_dec_vec.getElementVec(pt_index + dim_index + k);
+        v_dec_u64[v_dec_u64_index].push_back(((u64)tmp[1] << 32) | tmp[0]);
+      }
+    }
+  }
+
+  fm_timer.start();
+  // 计算 PIS step 2 的数组索引
+  auto indexs = compute_split_index(every_size);
+
+  vector<u8> s0_vec(dec_vec_num, 0);
+  vector<block> s_vsc(dec_vec_num, ZeroBlock);
+
+  for (u64 i = 0; i < dec_vec_num; i++) {
+    auto tmp = PIS_recv(v_dec_u64[i], indexs);
+    s0_vec[i] = tmp.s0;
+    s_vsc[i] = tmp.s;
+  }
+
+  fm_timer.end("recv_PIS_pre");
+
+  fm_timer.start();
+  auto ot_res = PIS_recv_KKRT_batch(s0_vec, sockets[0]);
+  fm_timer.end("recv_PIS_ot");
+
+  vector<u64> pis_res(dec_vec_num, 0);
+  for (u64 i = 0; i < dec_vec_num; i++) {
+    auto tmp = s_vsc[i] ^ ot_res[i];
+    pis_res[i] = tmp.get<u64>(0);
+  }
+
+  vector<u64> fm_res(PTS_NUM, 0);
+  for (u64 i = 0; i < PTS_NUM; i++) {
+    for (u64 j = 0; j < DIM; j++) {
+      fm_res[i] += pis_res[i * DIM + j];
+    }
+  }
+
+  coproto::sync_wait(sockets[0].send(fm_res));
+  insert_commus("recv_fm_res", 0);
 
   merge_timer(fm_timer);
+
+  for (u64 i = 0; i < PTS_NUM; i++) {
+    spdlog::debug("recv id: {}", IDs[i]);
+  }
 }
 
 /// offline

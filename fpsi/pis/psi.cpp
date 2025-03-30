@@ -26,7 +26,7 @@ Recv_PSM PIS_recv(vector<u64> &eles, const vector<vector<u64>> &indexs) {
   */
   // 表示 Alice
   auto party = 1;
-  auto bit_length = 32;
+  auto bit_length = 64;
   auto radix = 4;
   auto size = eles.size();
 
@@ -58,7 +58,7 @@ Recv_PSM PIS_recv(vector<u64> &eles, const vector<vector<u64>> &indexs) {
   for (auto res : res_shares) {
     s0 ^= res;
   }
-  spdlog::debug("recv s0:   {}", s0);
+  // spdlog::debug("recv s0:   {}", s0);
 
   /*
   PIS step 2
@@ -97,7 +97,8 @@ Recv_PSM PIS_recv(vector<u64> &eles, const vector<vector<u64>> &indexs) {
   for (u64 i = 0; i < psm_num; i++) {
     s = s | block((s_vec[i] & 1) << i);
   }
-  spdlog::debug("recv s block:    {} ", bitset<64>(s.get<u64>(0)).to_string());
+  // spdlog::debug("recv s block:    {} ",
+  // bitset<64>(s.get<u64>(0)).to_string());
 
   /*
   PIS step 3
@@ -118,7 +119,7 @@ Sender_PSM PIS_send(u64 data, u64 size) {
   PSM 初始化
   */
   auto party = 2; // 表示 Bob
-  auto bit_length = 32;
+  auto bit_length = 64;
   auto radix = 4;
 
   vector<u8> res_shares(size, 0);
@@ -149,7 +150,7 @@ Sender_PSM PIS_send(u64 data, u64 size) {
     // cout << "sender res: " << (u64)res << endl;
     t0 ^= res;
   }
-  spdlog::debug("sender t0: {}", t0);
+  // spdlog::debug("sender t0: {}", t0);
 
   /*
   PIS step 2
@@ -175,7 +176,8 @@ Sender_PSM PIS_send(u64 data, u64 size) {
     t = t | block((1ull & t_vec[i]) << i);
   }
 
-  spdlog::debug("sender t block:  {} ", bitset<64>(t.get<u64>(0)).to_string());
+  // spdlog::debug("sender t block:  {} ",
+  // bitset<64>(t.get<u64>(0)).to_string());
 
   /*
   PIS step 3
@@ -190,9 +192,10 @@ Sender_PSM PIS_send(u64 data, u64 size) {
   auto q0 = (tmp_mask) ? r ^ t : t;
   auto q1 = r ^ q0;
 
-  spdlog::debug("sender r  block: {} ", bitset<64>(r.get<u64>(0)).to_string());
-  spdlog::debug("sender q0 block: {} ", bitset<64>(q0.get<u64>(0)).to_string());
-  spdlog::debug("sender q1 block: {} ", bitset<64>(q1.get<u64>(0)).to_string());
+  // spdlog::debug("sender r  block: {} ",
+  // bitset<64>(r.get<u64>(0)).to_string()); spdlog::debug("sender q0 block: {}
+  // ", bitset<64>(q0.get<u64>(0)).to_string()); spdlog::debug("sender q1 block:
+  // {} ", bitset<64>(q1.get<u64>(0)).to_string());
 
   delete otpackArr[0];
   delete otpackArr[1];
@@ -307,6 +310,8 @@ vector<vector<u64>> compute_split_index(const u64 eles_size) {
 vector<vector<u64>> split_vertor(vector<u64> &eles,
                                  const vector<vector<u64>> &eles_index) {
   vector<vector<u64>> res(eles_index.size());
+  // spdlog::debug("eles.size {}; eles_index.size {}; eles_index[0].size {}",
+  //               eles.size(), eles_index.size(), eles_index[0].size());
 
   for (u64 i = 0; i < eles_index.size(); i++) {
     for (u64 j = 0; j < eles_index[0].size(); j++) {
