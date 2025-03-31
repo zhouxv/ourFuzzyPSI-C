@@ -201,6 +201,8 @@ void FPSIRecv::msg_inf_low() {
   coproto::sync_wait(sockets[0].recvResize(hashes));
   spdlog::info("recv hashes 接收完毕");
 
+  std::unordered_set<block> hashes_set(hashes.begin(), hashes.end());
+
   // 交集点计数
   std::atomic<u64> intersection_count(0);
 
@@ -254,13 +256,15 @@ void FPSIRecv::msg_inf_low() {
       vector<u64> temp = sum_combinations<u64>(
           oc::span<u64>(plain_nums_data + i * cipher_count, cipher_count), DIM);
 
+      cout << "temp.size(): " << temp.size() << endl;
+
       for (u64 j = 0; j < temp.size(); j++) {
         blake3_hasher_init(&hasher);
         blake3_hasher_update(&hasher, &temp[j], sizeof(u64));
         blake3_hasher_finalize(&hasher, hash_out.data(), 16);
 
-        auto it = std::find(hashes.begin(), hashes.end(), hash_out);
-        if (it != hashes.end()) {
+        auto it = hashes_set.find(hash_out);
+        if (it != hashes_set.end()) {
           intersection_count.fetch_add(1, std::memory_order::relaxed);
         }
       }
@@ -536,7 +540,7 @@ void FPSIRecv::msg_lp_low() {
       recv_sums_prefixs_dh.size());
 
   vector<vector<DH25519_point>> sender_prefixes_dh(PTS_NUM);
-  unordered_set<DH25519_point, Monty25519Hash> sender_prefixes_dh_k;
+  std::unordered_set<DH25519_point, Monty25519Hash> sender_prefixes_dh_k;
   sender_prefixes_dh_k.reserve(PTS_NUM * IF_MATCH_PARAM.second);
 
   for (u64 i = 0; i < PTS_NUM; i++) {

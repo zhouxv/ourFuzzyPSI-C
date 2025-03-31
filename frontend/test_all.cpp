@@ -463,6 +463,9 @@ void test_psm(CLP &cmd) {
     auto eles_copy = eles;
     cout << "开始PSM" << endl;
 
+    tVar t;
+    tStart(t);
+
     BatchEquality<sci::NetIO> *compare = new BatchEquality<sci::NetIO>(
         party, bit_length, radix, 1, num_cmps, ioArr0, ioArr1, otpackArr[0],
         otpackArr[1]);
@@ -481,6 +484,9 @@ void test_psm(CLP &cmd) {
     res_file.close();
 
     cout << "client: " << (bool)res << endl;
+
+    auto timer = tEnd(t);
+    cout << "time: " << timer << endl;
 
     // delete[] res_shares;
     delete otpackArr[0];

@@ -181,7 +181,7 @@ void FPSISenderH::init() { (METRIC == 0) ? init_inf() : init_lp(); }
 void FPSISenderH::init_inf() { fuzzy_mapping_offline(); }
 
 /// 离线阶段 低维Lp范数
-void FPSISenderH::init_lp() {}
+void FPSISenderH::init_lp() { fuzzy_mapping_offline(); }
 
 /// 在线阶段
 void FPSISenderH::msg() { (METRIC == 0) ? msg_inf() : msg_lp(); }
@@ -190,4 +190,4 @@ void FPSISenderH::msg() { (METRIC == 0) ? msg_inf() : msg_lp(); }
 void FPSISenderH::msg_inf() { fuzzy_mapping_online(); }
 
 /// 在线阶段 高维Lp范数
-void FPSISenderH::msg_lp() {}
+void FPSISenderH::msg_lp() { fuzzy_mapping_online(); }

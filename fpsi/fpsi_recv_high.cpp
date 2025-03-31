@@ -273,7 +273,7 @@ void FPSIRecvH::init() { (METRIC == 0) ? init_inf() : init_lp(); }
 void FPSIRecvH::init_inf() { fuzzy_mapping_offline(); }
 
 /// offline 高维 Lp 范数, 多线程 OKVS
-void FPSIRecvH::init_lp() {}
+void FPSIRecvH::init_lp() { fuzzy_mapping_offline(); }
 
 // online 阶段
 void FPSIRecvH::msg() { (METRIC == 0) ? msg_inf() : msg_lp(); }
@@ -282,4 +282,4 @@ void FPSIRecvH::msg() { (METRIC == 0) ? msg_inf() : msg_lp(); }
 void FPSIRecvH::msg_inf() { fuzzy_mapping_online(); }
 
 /// online 高维 Lp 范数, 多线程 OKVS
-void FPSIRecvH::msg_lp() {}
+void FPSIRecvH::msg_lp() { fuzzy_mapping_online(); }
