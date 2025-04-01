@@ -445,8 +445,8 @@ void FPSIRecvH::msg_inf() {
                             sockets[thread_index]);
     auto rr = sync_wait(r);
     post_process_inf_timer.end(
-        std::format("recv_thread_{}_psm_recv", thread_index));
-    insert_commus(std::format("recv_thread_{}_psm_recv", thread_index),
+        std::format("recv_thread_{}_batch_psm", thread_index));
+    insert_commus(std::format("recv_thread_{}_batch_psm", thread_index),
                   thread_index);
 
     vector<u32> vec_zero_cipher(DIM, 0);

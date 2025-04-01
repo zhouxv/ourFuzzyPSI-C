@@ -363,8 +363,8 @@ void FPSISenderH::msg_inf() {
         recv_psm_ciphers[j * PTS_NUM + i] = block_vector_to_bignumer(tmp);
       }
     }
-    insert_commus(std::format("sender_{}_ot", thread_index), thread_index);
-    spdlog::info("sender thread_index {} : OT发送完成", thread_index);
+    spdlog::info("sender thread_index {} : recv_psm_ciphers 接收完成",
+                 thread_index);
 
     inf_timer.start();
     auto add_tmp = ipcl::CipherText(pk, recv_psm_ciphers) +
