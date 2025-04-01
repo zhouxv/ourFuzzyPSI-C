@@ -1,7 +1,6 @@
 
 
 #include <cmath>
-#include <cstdint>
 #include <format>
 #include <ipcl/plaintext.hpp>
 #include <ipcl/utils/context.hpp>
@@ -15,9 +14,8 @@
 #include <ipcl/ciphertext.hpp>
 
 #include "fpsi_sender.h"
-#include "rb_okvs.h"
-#include "set_dec.h"
-#include "util.h"
+#include "rb_okvs/rb_okvs.h"
+#include "utils/set_dec.h"
 
 /// 离线阶段
 void FPSISender::init() { (METRIC == 0) ? init_inf_low() : init_lp_low(); }

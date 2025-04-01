@@ -1,9 +1,9 @@
-#include "util.h"
-#include "params_selects.h"
 #include <cryptoTools/Common/Defines.h>
 #include <cryptoTools/Common/block.h>
 #include <cryptoTools/Crypto/PRNG.h>
-#include <random>
+
+#include "utils/params_selects.h"
+#include "utils/util.h"
 
 // 采样，并指定交点数量
 void sample_points(u64 dim, u64 delta, u64 send_size, u64 recv_size,
@@ -286,6 +286,17 @@ const IfMatchParamTable::ParamType get_if_match_params(u64 metric, u64 delta) {
   }
 
   return IfMatchParamTable::getSelectedParam(fast_pow(delta, metric) + 1);
+}
+
+const FuzzyMappingParamTable::ParamType get_fuzzy_mapping_params(u64 metric,
+                                                                 u64 delta) {
+  if (metric < 0 || metric > 2) {
+    throw invalid_argument("get_fuzzy_mapping_params: Invalid metric value.");
+  }
+
+  auto t = (metric == 0) ? (delta * 2 + 1) : (delta + 1);
+
+  return FuzzyMappingParamTable::getSelectedParam(t);
 }
 
 std::vector<block> bignumer_to_block_vector(const BigNumber &bn) {

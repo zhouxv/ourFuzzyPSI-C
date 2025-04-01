@@ -1,20 +1,33 @@
-#include "test_all.h"
-#include "params_selects.h"
-#include "rb_okvs.h"
-#include "set_dec.h"
-#include "util.h"
 #include <bitset>
+#include <coproto/Socket/LocalAsyncSock.h>
+#include <cryptoTools/Common/Defines.h>
+#include <cryptoTools/Common/block.h>
+#include <cryptoTools/Crypto/PRNG.h>
+#include <format>
+#include <iostream>
+#include <ostream>
+#include <set>
+#include <string>
+#include <sys/socket.h>
+#include <thread>
+#include <vector>
+
+#include "pis_new/batch_pis.h"
+#include "rb_okvs/rb_okvs.h"
+#include "test_all.h"
+#include "utils/params_selects.h"
+#include "utils/set_dec.h"
+#include "utils/util.h"
+
 #include <cryptoTools/Common/CLP.h>
-#include <cstdint>
+#include <fmt/core.h>
 #include <ipcl/bignum.h>
 #include <ipcl/ciphertext.hpp>
 #include <ipcl/ipcl.hpp>
 #include <ipcl/plaintext.hpp>
-#include <set>
 #include <spdlog/spdlog.h>
-#include <vector>
 
-void test_palliar() {
+void test_paillier() {
   PRNG prng(oc::sysRandomSeed());
 
   // paillier加密环境准备
@@ -57,6 +70,30 @@ void test_palliar() {
 
   ipcl::terminateContext();
   std::cout << "Complete!" << std::endl << std::endl;
+}
+
+void test_paillier_neg() {
+  ipcl::initializeContext("QAT");
+  ipcl::KeyPair paillier_key = ipcl::generateKeypair(2048, true);
+  ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
+
+  auto mo = paillier_key.pub_key.getN();
+
+  BigNumber one(1);
+  auto n_1 = *mo - one;
+  ipcl::PlainText pt = ipcl::PlainText(n_1);
+  ipcl::PlainText pt1 = ipcl::PlainText(1);
+
+  ipcl::CipherText ct = paillier_key.pub_key.encrypt(pt);
+  ipcl::CipherText ct1 = paillier_key.pub_key.encrypt(pt1);
+
+  auto a = ct + ct1;
+  auto b = paillier_key.priv_key.decrypt(a);
+
+  auto c = b.getElement(0);
+
+  cout << "N: " << *mo << endl << "N-1:" << n_1 << endl << "c:" << c << endl;
+  ipcl::terminateContext();
 }
 
 void test_bitset() {
@@ -299,7 +336,7 @@ void test_if_match_params(CLP &cmd) {
 }
 
 // 测试 u64 的同态
-void test_u64_random(CLP &cmd) {
+void test_u64_random_he(CLP &cmd) {
   ipcl::initializeContext("QAT");
   ipcl::KeyPair paillier_key = ipcl::generateKeypair(2048, true);
   auto pk = paillier_key.pub_key;
@@ -410,4 +447,83 @@ bool validate_prefix_tree(const std::vector<std::string> &prefixes, u64 bits,
 
   // 检查是否覆盖整个目标区间
   return (current_max == target_max);
+}
+
+void test_batch_pis(CLP &cmd) {
+  u64 batch_size = cmd.getOr("s", 8);
+  u64 batch_num = cmd.getOr("n", 1);
+  u64 intersection = cmd.getOr<u64>("i", 1);
+  auto sockets = coproto::LocalAsyncSocket::makePair();
+
+  PRNG prng(oc::sysRandomSeed());
+  vector<u64> num(batch_size * batch_num);
+  vector<u64> num_2(batch_num);
+  for (u64 i = 0; i < batch_size * batch_num; i++) {
+    num[i] = prng.get<u64>() / 8;
+    cout << std::format("i: {} value: {}", i, num[i]) << endl;
+  }
+
+  vector<u64> idxs_p(batch_num);
+  for (u64 i = 0; i < batch_num; i++) {
+    if (intersection) {
+      u64 index = prng.get<u64>() % batch_size;
+      idxs_p[i] = index;
+      num_2[i] = num[i * batch_size + index];
+      cout << std::format("index: {} value: {}", index, num_2[i]) << endl;
+    } else {
+      num_2[i] = prng.get<u64>() / 8;
+    }
+  }
+
+  auto indexes = compute_split_index(batch_size);
+
+  for (auto i : indexes) {
+    for (auto j : i) {
+      cout << j << " ";
+    }
+    cout << endl;
+  }
+
+  auto recv = [&]() {
+    vector<u64> idxs(batch_num);
+
+    auto r = Batch_PIS_recv(num, batch_size, indexes, sockets[0]);
+    auto rr = sync_wait(r);
+
+    auto h = PIS_recv_KKRT_batch(rr.s0, sockets[0]);
+
+    auto s = rr.s;
+    u64 psm_num = log2(batch_size);
+    block block_mask = block((1ull << psm_num) - 1);
+    for (u64 i = 0; i < batch_num; i++) {
+      idxs[i] = (h[i] ^ s[i] & block_mask).get<u64>(0);
+    }
+
+    ofstream res_file;
+    res_file.open("res_share_P1.txt");
+    for (u64 i = 0; i < batch_num; i++) {
+      res_file << idxs[i] << endl;
+    }
+    res_file.close();
+  };
+
+  auto sender = [&]() {
+    auto s = Batch_PIS_send(num_2, batch_size, indexes, sockets[1]);
+    auto ss = sync_wait(s);
+
+    PIS_sender_KKRT_batch(ss.pis_msg, sockets[1]);
+
+    ofstream res_file;
+    res_file.open("res_share_P2.txt");
+    for (int i = 0; i < batch_num; i++) {
+      res_file << idxs_p[i] << endl;
+    }
+    res_file.close();
+  };
+
+  auto th0 = thread(recv);
+  auto th1 = thread(sender);
+
+  th0.join();
+  th1.join();
 }

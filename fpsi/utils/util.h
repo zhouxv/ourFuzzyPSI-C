@@ -1,20 +1,17 @@
 #pragma once
 
-#include "blake3.h"
-#include "params_selects.h"
-#include "rb_okvs.h"
+#include <vector>
+
+#include <blake3.h>
 #include <cryptoTools/Common/Defines.h>
 #include <cryptoTools/Common/block.h>
 #include <cryptoTools/Crypto/PRNG.h>
+#include <cryptoTools/Crypto/SodiumCurve.h>
 #include <ipcl/bignum.h>
 #include <spdlog/spdlog.h>
-#include <vector>
 
-using namespace oc;
-using namespace std;
-
-using DH25519_point = osuCrypto::Sodium::Monty25519;
-using DH25519_number = osuCrypto::Sodium::Scalar25519;
+#include "config.h"
+#include "utils/params_selects.h"
 
 // 简易计时器
 typedef std::chrono::high_resolution_clock::time_point tVar;
@@ -65,14 +62,6 @@ public:
   }
 };
 
-// 点的别名
-using pt = vector<u64>;
-
-// OKVS 参数
-const u64 OKVS_LAMBDA = 40;
-const double OKVS_EPSILON = 0.1;
-const block OKVS_SEED = oc::block(6800382592637124185);
-
 // 采样，并指定交点数量
 void sample_points(u64 dim, u64 delta, u64 sender_size, u64 recv_size,
                    u64 intersection_size, vector<pt> &sender_pts,
@@ -97,6 +86,9 @@ u64 combination(u64 n, u64 k);
 const OmegaTable::ParamType get_omega_params(u64 metric, u64 delta);
 
 const IfMatchParamTable::ParamType get_if_match_params(u64 metric, u64 delta);
+
+const FuzzyMappingParamTable::ParamType get_fuzzy_mapping_params(u64 metric,
+                                                                 u64 delta);
 
 // 密文与block的转换
 std::vector<block> bignumer_to_block_vector(const BigNumber &bn);
@@ -207,12 +199,25 @@ inline block get_key_from_dim_dec(const u64 &dim, const string &dec,
 }
 
 /// 获取 OKVS 的 key, inf
-inline block get_key_from_dim_dec(const u64 &dim, const string &dec) {
+inline block get_key_from_dim_dec(const u64 dim, const string &dec) {
   blake3_hasher hasher;
   block hash_out;
   blake3_hasher_init(&hasher);
   blake3_hasher_update(&hasher, &dim, sizeof(dim));
   blake3_hasher_update(&hasher, dec.data(), dec.size());
+
+  blake3_hasher_finalize(&hasher, hash_out.data(), 16);
+
+  return hash_out;
+}
+
+inline block get_key_from_dim_dec_id(const u64 dim, const string &dec, u64 id) {
+  blake3_hasher hasher;
+  block hash_out;
+  blake3_hasher_init(&hasher);
+  blake3_hasher_update(&hasher, &dim, sizeof(dim));
+  blake3_hasher_update(&hasher, dec.data(), dec.size());
+  blake3_hasher_update(&hasher, &id, sizeof(id));
 
   blake3_hasher_finalize(&hasher, hash_out.data(), 16);
 
@@ -278,6 +283,17 @@ inline void padding_bignumers(vector<BigNumber> &nums, u64 count,
   while (nums.size() < count) {
     prng.get(blks.data(), blk_size);
     nums.push_back(block_vector_to_bignumer(blks));
+  }
+}
+
+inline void padding_vec_8(vector<u64> &vec) {
+  auto size = vec.size();
+  auto remainder = size % 8;
+  if (remainder != 0) {
+    auto padding_num = 8 - remainder;
+    for (u64 i = 0; i < padding_num; i++) {
+      vec.push_back(0);
+    }
   }
 }
 
