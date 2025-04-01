@@ -23,11 +23,23 @@ int main(int argc, char **argv) {
 
   spdlog::set_pattern("[%l] %v");
 
-  if (cmd.isSet("single")) {
+  auto p = cmd.getOr("p", 1);
+
+  switch (p) {
+  case 1:
     run_low_dimension(cmd);
-    return 0;
-  } else {
+    break;
+  case 2:
     test_low_dimension(cmd);
+    break;
+  case 3:
+    run_high_dimension(cmd);
+    break;
+  case 4:
+    test_high_dimension(cmd);
+    break;
+  default:
+    throw std::runtime_error("unknown protocol");
   }
 
   return 0;

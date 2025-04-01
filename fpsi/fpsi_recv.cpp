@@ -256,8 +256,6 @@ void FPSIRecv::msg_inf_low() {
       vector<u64> temp = sum_combinations<u64>(
           oc::span<u64>(plain_nums_data + i * cipher_count, cipher_count), DIM);
 
-      cout << "temp.size(): " << temp.size() << endl;
-
       for (u64 j = 0; j < temp.size(); j++) {
         blake3_hasher_init(&hasher);
         blake3_hasher_update(&hasher, &temp[j], sizeof(u64));

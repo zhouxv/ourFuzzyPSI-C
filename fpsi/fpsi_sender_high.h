@@ -65,13 +65,28 @@ public:
   }
 
   FPSISenderH(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
-              vector<pt> &pts, ipcl::PublicKey pk, ipcl::PrivateKey sk,
-              DH25519_number dh_sk, vector<coproto::LocalAsyncSocket> &sockets)
+              vector<pt> &pts, ipcl::PublicKey &pk, ipcl::PrivateKey &sk,
+              DH25519_number &dh_sk, vector<coproto::LocalAsyncSocket> &sockets)
       : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
         THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk), dh_sk(dh_sk),
         sockets(sockets) {
     // 参数初始化
     OMEGA_PARAM = get_omega_params(metric, delta);
+    if (metric != 0)
+      IF_MATCH_PARAM = get_if_match_params(metric, delta);
+    SIDE_LEN = 2 * delta;
+    BLK_CELLS = 1 << dim;
+    DELTA_L2 = delta * delta;
+  };
+
+  FPSISenderH(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
+              vector<pt> &pts, ipcl::PublicKey pk, DH25519_number dh_sk,
+              const OmegaTable::ParamType &param,
+              vector<coproto::LocalAsyncSocket> &sockets)
+      : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
+        THREAD_NUM(thread_num), pts(pts), pk(pk), dh_sk(dh_sk),
+        OMEGA_PARAM(param), sockets(sockets) {
+    // 参数初始化
     if (metric != 0)
       IF_MATCH_PARAM = get_if_match_params(metric, delta);
     SIDE_LEN = 2 * delta;
