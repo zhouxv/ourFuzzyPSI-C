@@ -5,7 +5,9 @@
 #include <string>
 #include <vector>
 
-void test_palliar();
+void test_paillier();
+void test_paillier_neg();
+
 void test_bitset();
 
 void test_decompose_correction(CLP &cmd);
@@ -21,10 +23,4 @@ std::pair<u64, u64> prefix_to_range(const std::string &prefix, u64 bits);
 
 void test_u64_random_he(CLP &cmd);
 
-void test_psm(CLP &cmd);
-
-void test_split(CLP &cmd);
-
-void test_pis_part(CLP &cmd);
-
-void test_pis(CLP &cmd);
+void test_batch_pis(CLP &cmd);

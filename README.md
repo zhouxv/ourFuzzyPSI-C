@@ -37,14 +37,6 @@ cmake -S c -B c/build -DCMAKE_INSTALL_PREFIX=../../out/install
 cmake --build c/build --target install
 cd ..
 
-##############################
-# build Ezpc
-git clone https://github.com/shahakash28/EzPC-Aligned.git
-cd EzPC-Aligned/SCI
-mkdir build && cd build
-cmake -DEMP_USE_RANDOM_DEVICE=ON -DCMAKE_INSTALL_PREFIX=../../../../out/install ..
-# cmake --build . --target install --parallel
-
 
 ##############################
 # build FPSI

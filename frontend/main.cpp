@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
       test_if_match_params(cmd);
       return 0;
     case 4:
-      test_palliar();
+      test_paillier();
       return 0;
     case 5:
       test_bitset();
@@ -73,16 +73,10 @@ int main(int argc, char **argv) {
       test_low_bound(cmd);
       return 0;
     case 8:
-      test_psm(cmd);
+      test_batch_pis(cmd);
       return 0;
     case 9:
-      test_split(cmd);
-      return 0;
-    case 10:
-      test_pis_part(cmd);
-      return 0;
-    case 11:
-      test_pis(cmd);
+      test_paillier_neg();
       return 0;
     }
   }

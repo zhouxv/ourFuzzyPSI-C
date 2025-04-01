@@ -1,4 +1,5 @@
 #pragma once
+#include <ipcl/plaintext.hpp>
 #include <vector>
 
 #include <coproto/Socket/LocalAsyncSock.h>
@@ -45,6 +46,15 @@ public:
   vector<BigNumber> masks_1_values;
 
   vector<u64> IDs;
+
+  // 预计算的数据
+
+  vector<u64> random_values; //
+  ipcl::PlainText randoms_pts;
+  ipcl::CipherText random_ciphers; // L_inf, L_p getValue 使用
+
+  // ipcl::CipherText lp_pre_ciphers; // getValue 使用
+  // vector<vector<DH25519_point>> sender_random_prefixes_dh; // L_p if_match
 
   void clear() {
     for (auto socket : sockets) {

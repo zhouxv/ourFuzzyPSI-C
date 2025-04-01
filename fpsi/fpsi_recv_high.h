@@ -9,6 +9,7 @@
 #include <ipcl/pub_key.hpp>
 
 #include "config.h"
+#include "rb_okvs/rb_okvs.h"
 #include "utils/params_selects.h"
 #include "utils/util.h"
 
@@ -53,6 +54,13 @@ public:
   vector<u64> IDs;
   vector<vector<vector<block>>> get_id_encodings;
 
+  // OKVS 预计算
+  vector<RBOKVS> rb_okvs_vec;
+
+  // 预计算的密文
+  vector<vector<vector<block>>> inf_value_pre_ciphers; // L_inf使用
+  vector<vector<block>> lp_value_pre_ciphers;          // L_p getList 使用
+
   // 构造函数
   FPSIRecvH(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
             vector<pt> &pts, ipcl::PublicKey pk, ipcl::PrivateKey sk,
@@ -68,7 +76,7 @@ public:
     BLK_CELLS = 1 << dim;
     DELTA_L2 = delta * delta;
     OKVS_COUNT = (metric == 0) ? dim : 2 * dim;
-    OKVS_SIZE = pt_num * BLK_CELLS * OMEGA_PARAM.second;
+    OKVS_SIZE = pt_num * OMEGA_PARAM.second;
   };
 
   /// offline

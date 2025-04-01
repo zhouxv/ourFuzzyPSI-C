@@ -1,8 +1,4 @@
-
-
 #include <cmath>
-#include <cstdint>
-#include <format>
 #include <ipcl/plaintext.hpp>
 #include <ipcl/utils/context.hpp>
 #include <spdlog/spdlog.h>
@@ -16,9 +12,11 @@
 
 #include "config.h"
 #include "fpsi_sender_high.h"
-#include "pis/pis.h"
+#include "pis_new/batch_pis.h"
+#include "pis_new/batch_psm.h"
 #include "rb_okvs/rb_okvs.h"
 #include "utils/set_dec.h"
+#include "utils/util.h"
 
 void FPSISenderH::fuzzy_mapping_offline() {
   FUZZY_MAPPING_PARAM = FuzzyMappingParamTable::getSelectedParam(2 * DELTA + 1);
@@ -147,18 +145,16 @@ void FPSISenderH::fuzzy_mapping_online() {
   /*--------------------------------------------------------------------------------------------------------------------------------*/
 
   fm_timer.start();
-  vector<array<block, 2>> pis_msg;
-  pis_msg.reserve(PTS_NUM * DIM);
+  auto indexes = compute_split_index(padding_count);
+  auto s =
+      Batch_PIS_send(masks_1_values_u64, padding_count, indexes, sockets[0]);
+  auto ss = sync_wait(s);
 
-  for (u64 i = 0; i < PTS_NUM * DIM; i++) {
-    auto tmp = PIS_send(masks_1_values_u64[i], padding_count);
-    pis_msg.push_back(tmp.q_arr);
-  }
-  fm_timer.end("sender_PIS_pre");
+  fm_timer.end("sender_fm_PIS_pre");
 
   fm_timer.start();
-  PIS_sender_KKRT_batch(pis_msg, sockets[0]);
-  fm_timer.end("sender_PIS_ot");
+  PIS_sender_KKRT_batch(ss.pis_msg, sockets[0]);
+  fm_timer.end("sender_fm_PIS_ot");
 
   vector<u64> fm_res;
   coproto::sync_wait(sockets[0].recvResize(fm_res));
@@ -170,6 +166,7 @@ void FPSISenderH::fuzzy_mapping_online() {
       IDs[i] -= masks_0_values_u64[i * DIM + j];
     }
   }
+  insert_commus("sender_fm_pis", 0);
 
   merge_timer(fm_timer);
 };
@@ -177,17 +174,239 @@ void FPSISenderH::fuzzy_mapping_online() {
 /// 离线阶段
 void FPSISenderH::init() { (METRIC == 0) ? init_inf() : init_lp(); }
 
-/// 离线阶段 低维无穷范数
-void FPSISenderH::init_inf() { fuzzy_mapping_offline(); }
+/// 离线阶段 高维无穷范数
+void FPSISenderH::init_inf() {
+  fuzzy_mapping_offline();
 
-/// 离线阶段 低维Lp范数
-void FPSISenderH::init_lp() { fuzzy_mapping_offline(); }
+  spdlog::info("sender fm 离线阶段完成");
+
+  ipcl::initializeContext("QAT");
+  ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
+
+  PRNG prng((block(oc::sysRandomSeed())));
+
+  // 计算随机数
+  random_values.resize(PTS_NUM * DIM);
+  vector<BigNumber> random_bns(PTS_NUM * DIM, 0);
+
+  for (u64 i = 0; i < PTS_NUM * DIM; i++) {
+    random_values[i] = prng.get<u64>() / DIM;
+    random_bns[i] = BigNumber(reinterpret_cast<Ipp32u *>(&random_values[i]), 2);
+  }
+
+  randoms_pts = ipcl::PlainText(random_bns);
+  random_ciphers = pk.encrypt(randoms_pts);
+
+  spdlog::info("sender 计算随机数完成");
+
+  ipcl::terminateContext();
+}
+
+/// 离线阶段 高维Lp范数
+void FPSISenderH::init_lp() {
+  fuzzy_mapping_offline();
+
+  //
+}
 
 /// 在线阶段
 void FPSISenderH::msg() { (METRIC == 0) ? msg_inf() : msg_lp(); }
 
-/// 在线阶段 低维无穷范数, 多线程 OKVS
-void FPSISenderH::msg_inf() { fuzzy_mapping_online(); }
+/// 在线阶段 高维无穷范数
+void FPSISenderH::msg_inf() {
+  simpleTimer inf_timer;
+
+  inf_timer.start();
+  fuzzy_mapping_online();
+  inf_timer.end("sender_fm_online");
+
+  spdlog::info("sender fm online 完成");
+
+  /*--------------------------------------------------------------------------------------------------------------------------------*/
+  // OKVS Encoding 的接收
+  /*--------------------------------------------------------------------------------------------------------------------------------*/
+  u64 okvs_count;
+  u64 mN;
+  u64 mSize;
+
+  coproto::sync_wait(sockets[0].flush());
+  coproto::sync_wait(sockets[0].recv(okvs_count));
+  coproto::sync_wait(sockets[0].recv(mN));
+  coproto::sync_wait(sockets[0].recv(mSize));
+
+  coproto::sync_wait(sockets[0].flush());
+
+  vector<vector<vector<block>>> encodings(
+      okvs_count, vector<vector<block>>(
+                      mSize, vector<block>(PAILLIER_CIPHER_SIZE_IN_BLOCK)));
+
+  for (u64 i = 0; i < okvs_count; i++) {
+    for (u64 j = 0; j < mSize; j++) {
+      coproto::sync_wait(sockets[0].recvResize(encodings[i][j]));
+    }
+  }
+
+  spdlog::info("sender okvs encoding 接收完成");
+
+  /*--------------------------------------------------------------------------------------------------------------------------------*/
+  // blake3 hash 发送
+  /*--------------------------------------------------------------------------------------------------------------------------------*/
+  // 发送随机数和的 hash
+  // coproto::sync_wait(sockets[0].flush());
+  // coproto::sync_wait(sockets[0].send(random_hashes));
+  // insert_commus("sender_0_hashes", 0);
+  // spdlog::info("sender 哈希发送完成");
+
+  /*--------------------------------------------------------------------------------------------------------------------------------*/
+  // get value inf —— decode and add random
+  /*--------------------------------------------------------------------------------------------------------------------------------*/
+  auto mu = OMEGA_PARAM.first.size();
+  u64 pts_batch_size = PTS_NUM / THREAD_NUM;
+  vector<thread> get_value_inf_ths;
+
+  auto get_value_inf = [&](u64 thread_index) {
+    simpleTimer get_value_timer_inf;
+
+    RBOKVS rb_okvs;
+    rb_okvs.init(mN, OKVS_EPSILON, OKVS_LAMBDA, OKVS_SEED);
+
+    u64 pt_start = thread_index * pts_batch_size;
+    u64 pt_end =
+        (thread_index == THREAD_NUM - 1) ? PTS_NUM : pt_start + pts_batch_size;
+
+    u64 pts_count = std::max(pts_batch_size, pt_end - pt_start);
+
+    coproto::sync_wait(sockets[thread_index].flush());
+    coproto::sync_wait(sockets[thread_index].send(pts_count));
+
+    vector<BigNumber> decode_ciphers;
+    vector<BigNumber> random_ciphers_copy;
+    decode_ciphers.reserve(pts_count * DIM * mu);
+    random_ciphers_copy.reserve(pts_count * DIM * mu);
+
+    // decode
+    get_value_timer_inf.start();
+    for (u64 i = pt_start; i < pt_end; i++) {
+
+      for (u64 j = 0; j < DIM; j++) {
+        auto prefixs = set_prefix(pts[i][j], OMEGA_PARAM.first);
+
+        for (u64 k = 0; k < prefixs.size(); k++) {
+          auto key = get_key_from_dim_dec_id(j, prefixs[k], IDs[i]);
+          auto decode =
+              rb_okvs.decode(encodings[j], key, PAILLIER_CIPHER_SIZE_IN_BLOCK);
+
+          decode_ciphers.push_back(block_vector_to_bignumer(decode));
+          random_ciphers_copy.push_back(random_ciphers[i * DIM + j]);
+        }
+      }
+    }
+    get_value_timer_inf.end(std::format("send_{}_okvs_decode", thread_index));
+    spdlog::info("sender thread_index {} : okvs 解码完成", thread_index);
+
+    /*--------------------------------------------------------------------------------------------------------------------------------*/
+    // getValue inf
+    /*--------------------------------------------------------------------------------------------------------------------------------*/
+    ipcl::initializeContext("QAT");
+    ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
+    get_value_timer_inf.start();
+    // decode + random
+    auto results = ipcl::CipherText(pk, decode_ciphers) +
+                   ipcl::CipherText(pk, random_ciphers_copy);
+    get_value_timer_inf.end(std::format("send_{}_get_value", thread_index));
+    spdlog::info("sender thread_index {} : 加密完成", thread_index);
+
+    coproto::sync_wait(sockets[thread_index].flush());
+    for (u64 i = 0; i < pts_count * DIM * mu; i++) {
+      coproto::sync_wait(sockets[thread_index].send(
+          bignumer_to_block_vector(results.getElement(i))));
+    }
+    insert_commus(std::format("sender_{}_ciphers", thread_index), thread_index);
+    spdlog::info("sender thread_index {} : 密文发送完成", thread_index);
+
+    get_value_timer_inf.start();
+    auto s = Batch_PSM_send(random_values, OMEGA_PARAM.first.size(),
+                            sockets[thread_index]);
+    auto ss = sync_wait(s);
+    get_value_timer_inf.end("sender_batch_psm");
+    insert_commus(std::format("sender_{}_batch_psm", thread_index),
+                  thread_index);
+
+    // 准备0 1密文
+    vector<u32> vec_zero_cipher(DIM, 0);
+    ipcl::PlainText pt_zero = ipcl::PlainText(vec_zero_cipher);
+    ipcl::CipherText ct_zero = pk.encrypt(pt_zero);
+
+    auto N = *pk.getN();
+    auto N_1 = N - 1;
+    vector<BigNumber> N_1_V(DIM, N_1);
+    auto N_1_V_ciphers = pk.encrypt(ipcl::PlainText(N_1_V));
+
+    auto psm_num = ss.size();
+    vector<BigNumber> sender_psm_bns(psm_num, 0);
+
+    for (u64 i = 0; i < PTS_NUM; i++) {
+      for (u64 j = 0; j < DIM; j++) {
+        sender_psm_bns[j * PTS_NUM + i] =
+            (ss[i * DIM + j]) ? N_1_V_ciphers[j] : ct_zero[j];
+      }
+    }
+
+    // 接收 PSM 密文
+    vector<BigNumber> recv_psm_ciphers(psm_num);
+
+    coproto::sync_wait(sockets[thread_index].flush());
+    for (u64 i = 0; i < PTS_NUM; i++) {
+      for (u64 j = 0; j < DIM; j++) {
+        vector<block> tmp;
+        coproto::sync_wait(sockets[thread_index].recvResize(tmp));
+        recv_psm_ciphers[j * PTS_NUM + i] = block_vector_to_bignumer(tmp);
+      }
+    }
+    insert_commus(std::format("sender_{}_ot", thread_index), thread_index);
+    spdlog::info("sender thread_index {} : OT发送完成", thread_index);
+
+    inf_timer.start();
+    auto add_tmp = ipcl::CipherText(pk, recv_psm_ciphers) +
+                   ipcl::CipherText(pk, sender_psm_bns);
+    auto mul_tmp = add_tmp * randoms_pts;
+
+    vector<ipcl::CipherText> add_tmp_vec;
+    add_tmp_vec.reserve(DIM);
+    for (u64 i = 0; i < DIM; i++) {
+      auto chunk = mul_tmp.getChunk(i * PTS_NUM, PTS_NUM);
+      add_tmp_vec.push_back(ipcl::CipherText(pk, chunk));
+    }
+
+    for (u64 i = 1; i < DIM; i++) {
+      add_tmp_vec[0] = add_tmp_vec[0] + add_tmp_vec[i];
+    }
+
+    inf_timer.end("sender_psm_add_mul");
+    spdlog::info("sender_psm_add_mul 完成");
+
+    coproto::sync_wait(sockets[thread_index].flush());
+    for (u64 i = 0; i < PTS_NUM; i++) {
+      coproto::sync_wait(sockets[thread_index].send(
+          bignumer_to_block_vector(add_tmp_vec[0][i])));
+    }
+    insert_commus(std::format("sender_{}_psm_add_mul", thread_index),
+                  thread_index);
+
+    merge_timer(get_value_timer_inf);
+    ipcl::terminateContext();
+  };
+
+  // 启动线程
+  for (u64 t = 0; t < THREAD_NUM; t++) {
+    get_value_inf_ths.emplace_back(get_value_inf, t);
+  }
+
+  // 等待所有线程完成
+  for (auto &th : get_value_inf_ths) {
+    th.join();
+  }
+}
 
 /// 在线阶段 高维Lp范数
 void FPSISenderH::msg_lp() { fuzzy_mapping_online(); }

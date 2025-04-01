@@ -52,12 +52,6 @@ find_package(IPCL 2.0.0
     REQUIRED)
 target_link_libraries(main IPCL::ipcl)
 
-# # ############################################
-# # EzPC SCI                             #
-# # ############################################
-add_subdirectory(${CMAKE_SOURCE_DIR}/thirdparty/EzPC-Aligned/SCI)
-target_include_directories(main PUBLIC thirdparty/EzPC-Aligned/SCI/src)
-
 # ############################################
 # Link  GMP                                  #
 # ############################################

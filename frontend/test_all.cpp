@@ -3,15 +3,16 @@
 #include <cryptoTools/Common/Defines.h>
 #include <cryptoTools/Common/block.h>
 #include <cryptoTools/Crypto/PRNG.h>
+#include <format>
 #include <iostream>
+#include <ostream>
 #include <set>
 #include <string>
 #include <sys/socket.h>
 #include <thread>
 #include <vector>
 
-#include "pis/batch_psm.h"
-#include "pis/pis.h"
+#include "pis_new/batch_pis.h"
 #include "rb_okvs/rb_okvs.h"
 #include "test_all.h"
 #include "utils/params_selects.h"
@@ -25,9 +26,8 @@
 #include <ipcl/ipcl.hpp>
 #include <ipcl/plaintext.hpp>
 #include <spdlog/spdlog.h>
-#include <utils/net_io_channel.h>
 
-void test_palliar() {
+void test_paillier() {
   PRNG prng(oc::sysRandomSeed());
 
   // paillier加密环境准备
@@ -70,6 +70,30 @@ void test_palliar() {
 
   ipcl::terminateContext();
   std::cout << "Complete!" << std::endl << std::endl;
+}
+
+void test_paillier_neg() {
+  ipcl::initializeContext("QAT");
+  ipcl::KeyPair paillier_key = ipcl::generateKeypair(2048, true);
+  ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
+
+  auto mo = paillier_key.pub_key.getN();
+
+  BigNumber one(1);
+  auto n_1 = *mo - one;
+  ipcl::PlainText pt = ipcl::PlainText(n_1);
+  ipcl::PlainText pt1 = ipcl::PlainText(1);
+
+  ipcl::CipherText ct = paillier_key.pub_key.encrypt(pt);
+  ipcl::CipherText ct1 = paillier_key.pub_key.encrypt(pt1);
+
+  auto a = ct + ct1;
+  auto b = paillier_key.priv_key.decrypt(a);
+
+  auto c = b.getElement(0);
+
+  cout << "N: " << *mo << endl << "N-1:" << n_1 << endl << "c:" << c << endl;
+  ipcl::terminateContext();
 }
 
 void test_bitset() {
@@ -425,266 +449,74 @@ bool validate_prefix_tree(const std::vector<std::string> &prefixes, u64 bits,
   return (current_max == target_max);
 }
 
-void test_psm(CLP &cmd) {
+void test_batch_pis(CLP &cmd) {
+  u64 batch_size = cmd.getOr("s", 8);
+  u64 batch_num = cmd.getOr("n", 1);
+  u64 intersection = cmd.getOr<u64>("i", 1);
+  auto sockets = coproto::LocalAsyncSocket::makePair();
 
-  auto port = cmd.getOr("port", 7777);
-  auto bit_length = 64;
-  auto radix = 8;
-  u64 size = 16;
-
-  u64 num_cmps = size + (size % 8);
-
-  vector<u64> eles(num_cmps);
-
-  PRNG prng1(oc::sysRandomSeed());
-  for (u64 i = 0; i < num_cmps; i++) {
-    eles[i] = prng1.get<u64>();
-  }
-
-  auto client = [&]() {
-    PRNG prng(oc::sysRandomSeed());
-    auto party = 1;
-    sci::OTPack<sci::NetIO> *otpackArr[2];
-    // uint8_t *res_shares = new uint8_t[num_cmps];
-    vector<u8> res_shares(num_cmps, 0);
-
-    sci::NetIO *ioArr0 = new sci::NetIO(string("127.0.0.1").c_str(), port);
-    sci::NetIO *ioArr1 = new sci::NetIO(string("127.0.0.1").c_str(), port + 1);
-    cout << "ioArr 完成" << endl;
-
-    // party 1 client
-    // party 2 server
-
-    otpackArr[0] =
-        new sci::OTPack<sci::NetIO>(ioArr0, party, radix, bit_length);
-    otpackArr[1] =
-        new sci::OTPack<sci::NetIO>(ioArr1, 3 - party, radix, bit_length);
-
-    auto eles_copy = eles;
-    cout << "开始PSM" << endl;
-
-    tVar t;
-    tStart(t);
-
-    BatchEquality<sci::NetIO> *compare = new BatchEquality<sci::NetIO>(
-        party, bit_length, radix, 1, num_cmps, ioArr0, ioArr1, otpackArr[0],
-        otpackArr[1]);
-
-    perform_batch_equality(eles_copy.data(), compare, res_shares.data());
-
-    cout << "Writing resultant shares to File ..." << endl;
-    u8 res = 0;
-    ofstream res_file;
-    res_file.open("res_share_P1.txt");
-    for (int i = 0; i < num_cmps; i++) {
-      res ^= res_shares[i];
-      res_file << eles_copy[i] << " " << (bool)res_shares[i] << endl;
-      // res_file << static_cast<u64>(res_shares[i]) << endl;
-    }
-    res_file.close();
-
-    cout << "client: " << (bool)res << endl;
-
-    auto timer = tEnd(t);
-    cout << "time: " << timer << endl;
-
-    // delete[] res_shares;
-    delete otpackArr[0];
-    delete otpackArr[1];
-    delete ioArr0;
-    delete ioArr1;
-    delete compare;
-  };
-
-  auto server = [&]() {
-    PRNG prng(oc::sysRandomSeed());
-    auto half_size = num_cmps / 2;
-
-    vector<u64> eles_copy(num_cmps);
-    for (u64 i = 0; i < num_cmps; i++) {
-      eles_copy[i] = eles[num_cmps / 2];
-    }
-
-    sci::NetIO *ioArr0 = new sci::NetIO(nullptr, port);
-    sci::NetIO *ioArr1 = new sci::NetIO(nullptr, port + 1);
-    cout << "ioArr 完成" << endl;
-
-    sci::OTPack<sci::NetIO> *otpackArr[2];
-
-    // party 1 client
-    // party 2 server
-    auto party = 2;
-
-    otpackArr[0] =
-        new sci::OTPack<sci::NetIO>(ioArr0, party, radix, bit_length);
-    otpackArr[1] =
-        new sci::OTPack<sci::NetIO>(ioArr1, 3 - party, radix, bit_length);
-
-    // uint8_t *res_shares = new uint8_t[num_cmps];
-    vector<u8> res_shares(num_cmps, 0);
-
-    cout << "开始PSM" << endl;
-    BatchEquality<sci::NetIO> *compare = new BatchEquality<sci::NetIO>(
-        party, bit_length, radix, 1, num_cmps, ioArr0, ioArr1, otpackArr[0],
-        otpackArr[1]);
-
-    perform_batch_equality(eles_copy.data(), compare, res_shares.data());
-
-    u8 res = 0;
-
-    cout << "Writing resultant shares to File ..." << endl;
-    ofstream res_file;
-    res_file.open("res_share_P2.txt");
-    for (int i = 0; i < num_cmps; i++) {
-      res ^= res_shares[i];
-      res_file << eles_copy[i] << " " << (bool)res_shares[i] << endl;
-      // res_file << static_cast<u64>(res_shares[i]) << endl;
-    }
-    res_file.close();
-
-    cout << "server: " << (bool)res << endl;
-
-    // delete[] res_shares;
-    delete otpackArr[0];
-    delete otpackArr[1];
-    delete ioArr0;
-    delete ioArr1;
-    delete compare;
-  };
-
-  auto th0 = thread(client);
-  auto th1 = thread(server);
-
-  th0.join();
-  th1.join();
-}
-
-void test_split(CLP &cmd) {
-  auto logn = cmd.getOr("n", 4);
-  auto n = 1 << logn;
-
-  vector<u64> vec(n);
   PRNG prng(oc::sysRandomSeed());
-  for (u64 i = 0; i < n; i++) {
-    vec[i] = prng.get<u64>();
+  vector<u64> num(batch_size * batch_num);
+  vector<u64> num_2(batch_num);
+  for (u64 i = 0; i < batch_size * batch_num; i++) {
+    num[i] = prng.get<u64>() / 8;
+    cout << std::format("i: {} value: {}", i, num[i]) << endl;
   }
 
-  // 输出 vec 数组
-  cout << "vec 数组 (索引, 值):" << endl;
-  for (u64 i = 0; i < vec.size(); i++) {
-    cout << "[" << i << "] = " << vec[i] << endl;
+  vector<u64> idxs_p(batch_num);
+  for (u64 i = 0; i < batch_num; i++) {
+    if (intersection) {
+      u64 index = prng.get<u64>() % batch_size;
+      idxs_p[i] = index;
+      num_2[i] = num[i * batch_size + index];
+      cout << std::format("index: {} value: {}", index, num_2[i]) << endl;
+    } else {
+      num_2[i] = prng.get<u64>() / 8;
+    }
   }
-  cout << endl;
 
-  auto indexs = compute_split_index(n);
-  auto spilt_vecs = split_vertor(vec, indexs);
+  auto indexes = compute_split_index(batch_size);
 
-  for (u64 i = 0; i < indexs.size(); i++) {
-    for (u64 j = 0; j < indexs[0].size(); j++) {
-      cout << indexs[i][j] << " " << spilt_vecs[i][j] << " ";
+  for (auto i : indexes) {
+    for (auto j : i) {
+      cout << j << " ";
     }
     cout << endl;
   }
-}
-
-void test_pis_part(CLP &cmd) {
-  auto logn = cmd.getOr("n", 4);
-  auto n = 1 << logn;
-
-  PRNG prng(oc::sysRandomSeed());
-  vector<u64> num(n);
-
-  for (u64 i = 0; i < n; i++) {
-    num[i] = prng.get<u32>();
-  }
 
   auto recv = [&]() {
-    auto indexs = compute_split_index(n);
-    vector<u8> msg;
-    vector<block> s_vsc1;
+    vector<u64> idxs(batch_num);
 
-    auto tmp = PIS_recv(num, indexs);
+    auto r = Batch_PIS_recv(num, batch_size, indexes, sockets[0]);
+    auto rr = sync_wait(r);
 
-    // auto msg1 = PIS_recv_KKRT_batch(msg, sockets[0]);
-  };
+    auto h = PIS_recv_KKRT_batch(rr.s0, sockets[0]);
 
-  auto sender = [&]() {
-    vector<array<block, 2>> pis_msg;
-
-    auto index = prng.get<u64>() % n;
-    auto data = num[index];
-    auto tmp = PIS_send(data, n);
-
-    cout << "index: " << index << "; data: " << data << endl;
-  };
-
-  auto th0 = thread(recv);
-  auto th1 = thread(sender);
-
-  th0.join();
-  th1.join();
-}
-
-void test_pis(CLP &cmd) {
-  auto logn = cmd.getOr("n", 4);
-  auto batch_size = cmd.getOr("b", 128);
-  auto n = 1 << logn;
-
-  PRNG prng(oc::sysRandomSeed());
-  vector<vector<u64>> num(batch_size);
-  for (u64 i = 0; i < batch_size; i++) {
-    for (u64 j = 0; j < n; j++) {
-      num[i].push_back(prng.get<u32>());
+    auto s = rr.s;
+    u64 psm_num = log2(batch_size);
+    block block_mask = block((1ull << psm_num) - 1);
+    for (u64 i = 0; i < batch_num; i++) {
+      idxs[i] = (h[i] ^ s[i] & block_mask).get<u64>(0);
     }
-  }
-
-  auto sockets = coproto::LocalAsyncSocket::makePair();
-
-  auto recv = [&]() {
-    auto indexs = compute_split_index(n);
-    vector<u8> s0_vec;
-    vector<block> s_vsc;
-    s0_vec.reserve(batch_size);
-    s_vsc.reserve(batch_size);
-
-    for (u64 i = 0; i < batch_size; i++) {
-      auto tmp = PIS_recv(num[i], indexs);
-      s0_vec.push_back(tmp.s0);
-      s_vsc.push_back(tmp.s);
-    }
-
-    auto msg1 = PIS_recv_KKRT_batch(s0_vec, sockets[0]);
 
     ofstream res_file;
     res_file.open("res_share_P1.txt");
-    for (u64 i = 0; i < batch_size; i++) {
-      auto tmp = s_vsc[i] ^ msg1[i];
-      res_file << tmp.get<u64>(0) << endl;
+    for (u64 i = 0; i < batch_num; i++) {
+      res_file << idxs[i] << endl;
     }
     res_file.close();
   };
 
   auto sender = [&]() {
-    vector<u64> indexs;
-    indexs.reserve(batch_size);
+    auto s = Batch_PIS_send(num_2, batch_size, indexes, sockets[1]);
+    auto ss = sync_wait(s);
 
-    vector<array<block, 2>> pis_msg;
-    pis_msg.reserve(batch_size);
-
-    for (u64 i = 0; i < batch_size; i++) {
-      auto index = prng.get<u64>() % n;
-      indexs.push_back(index);
-      auto data = num[i][index];
-      auto tmp = PIS_send(data, n);
-      pis_msg.push_back(tmp.q_arr);
-    }
-
-    PIS_sender_KKRT_batch(pis_msg, sockets[1]);
+    PIS_sender_KKRT_batch(ss.pis_msg, sockets[1]);
 
     ofstream res_file;
     res_file.open("res_share_P2.txt");
-    for (int i = 0; i < batch_size; i++) {
-      res_file << indexs[i] << endl;
+    for (int i = 0; i < batch_num; i++) {
+      res_file << idxs_p[i] << endl;
     }
     res_file.close();
   };
