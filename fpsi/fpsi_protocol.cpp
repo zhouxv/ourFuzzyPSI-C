@@ -662,23 +662,23 @@ void test_high_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
   DH25519_number recv_dh_k(prng);
   DH25519_number send_dh_k(prng);
 
-  // 本地网络通信初始化
-  vector<coproto::LocalAsyncSocket> socketPair0, socketPair1;
-  for (u64 i = 0; i < 1; ++i) {
-    auto socketPair = coproto::LocalAsyncSocket::makePair();
-    socketPair0.push_back(socketPair[0]);
-    socketPair1.push_back(socketPair[1]);
-  }
-  spdlog::info("双方网络初始化完成");
-
-  // 接收方和发送方初始化
-  FPSIRecvH recv(DIM, DELTA, recv_size, METRIC, 1, recv_pts,
-                 paillier_key.pub_key, paillier_key.priv_key, recv_dh_k, param,
-                 socketPair0);
-  FPSISenderH sender(DIM, DELTA, send_size, METRIC, 1, send_pts,
-                     paillier_key.pub_key, send_dh_k, param, socketPair1);
-
   for (u64 i = 0; i < trait; i++) {
+    // 本地网络通信初始化
+    vector<coproto::LocalAsyncSocket> socketPair0, socketPair1;
+    for (u64 i = 0; i < 1; ++i) {
+      auto socketPair = coproto::LocalAsyncSocket::makePair();
+      socketPair0.push_back(socketPair[0]);
+      socketPair1.push_back(socketPair[1]);
+    }
+    spdlog::info("双方网络初始化完成");
+
+    // 接收方和发送方初始化
+    FPSIRecvH recv(DIM, DELTA, recv_size, METRIC, 1, recv_pts,
+                   paillier_key.pub_key, paillier_key.priv_key, recv_dh_k,
+                   param, socketPair0);
+    FPSISenderH sender(DIM, DELTA, send_size, METRIC, 1, send_pts,
+                       paillier_key.pub_key, send_dh_k, param, socketPair1);
+
     spdlog::info("这是第 {} 个测试运行", i);
 
     sample_points(DIM, DELTA, send_size, recv_size, intersection_size, send_pts,
@@ -739,9 +739,6 @@ void test_high_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
 
     time_sums[i] = online_time;
     comm_sums[i] = total_com;
-
-    recv.clear();
-    sender.clear();
   }
 
   cout << std::format("n_r: {} , n_s: {} , dim: {} , delta: {} , metric: {}, "
