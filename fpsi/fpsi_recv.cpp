@@ -99,8 +99,6 @@ void FPSIRecv::init_lp_low() {
 
   spdlog::debug("recv lp_value_pre_ciphers init done");
 
-  // if_match 部分的预计算
-
   ipcl::terminateContext();
 }
 
@@ -140,7 +138,7 @@ void FPSIRecv::msg_inf_low() {
 
       for (u64 j = 0; j < cells.size(); j++) {
         for (string &dec : decs) {
-          block tmp = get_key_from_dim_dec(dim_index, dec, cells[j]);
+          block tmp = get_key_from_dim_dec_cell(dim_index, dec, cells[j]);
           keys.push_back(tmp);
         }
       }
@@ -348,7 +346,7 @@ void FPSIRecv::msg_lp_low() {
           // 计算 key
           auto x_star = bound_func(dec);
           block tmp =
-              get_key_from_dim_sigma_dec(dim_index, sigma, dec, cells[j]);
+              get_key_from_dim_sigma_dec_cell(dim_index, sigma, dec, cells[j]);
           keys.push_back(tmp);
 
           // 计算value

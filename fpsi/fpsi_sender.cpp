@@ -232,7 +232,7 @@ void FPSISender::msg_inf_low() {
         auto prefixs = set_prefix(pts[i][j], OMEGA_PARAM.first);
 
         for (u64 k = 0; k < prefixs.size(); k++) {
-          auto key = get_key_from_dim_dec(j, prefixs[k], blk);
+          auto key = get_key_from_dim_dec_cell(j, prefixs[k], blk);
           auto decode =
               rb_okvs.decode(encodings[j], key, PAILLIER_CIPHER_SIZE_IN_BLOCK);
 
@@ -362,8 +362,8 @@ void FPSISender::msg_lp_low() {
         auto bound_func = (sigma == 0) ? up_bound : low_bound;
 
         for (u64 k = 0; k < prefixs.size(); k++) {
-          auto key =
-              get_key_from_dim_sigma_dec(dim_index, sigma, prefixs[k], blk);
+          auto key = get_key_from_dim_sigma_dec_cell(dim_index, sigma,
+                                                     prefixs[k], blk);
           auto decode = rb_okvs.decode(encodings[j], key, value_block_length);
           auto bns = block_vector_to_bignumers(decode, METRIC, pk.getNSQ());
 
@@ -450,16 +450,12 @@ void FPSISender::msg_lp_low() {
     // coproto::sync_wait(sockets[0].flush());
     std::shuffle(recv_prefixs_dh[i].begin(), recv_prefixs_dh[i].end(), prng);
   }
-  spdlog::info("sender: recv_prefixs_dh 接收完成");
+  spdlog::info("sender: recv_if_match_prefixs 接收完成");
 
   for (auto tmp : sender_random_prefixes_dh) {
     coproto::sync_wait(sockets[0].send(tmp));
   }
-  insert_commus("sender_random_prefixes_dh", 0);
-  spdlog::info("sender: sender_random_prefixes_dh 发送完成, "
-               "sender_random_prefixes_dh size {} {}",
-               sender_random_prefixes_dh.size(),
-               sender_random_prefixes_dh[0].size());
+  insert_commus("sender_if_match_random_prefixes_dh", 0);
 
   vector<vector<DH25519_point>> recv_prefixs_dh_k;
   recv_prefixs_dh_k.reserve(sums_count);

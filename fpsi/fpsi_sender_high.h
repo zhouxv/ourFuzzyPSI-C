@@ -49,12 +49,14 @@ public:
 
   // 预计算的数据
 
-  vector<u64> random_values; //
-  ipcl::PlainText randoms_pts;
+  vector<u64> random_values;       // Linf、Lp 均可使用
+  ipcl::PlainText randoms_pts;     // Linf get value 使用
   ipcl::CipherText random_ciphers; // L_inf, L_p getValue 使用
 
-  // ipcl::CipherText lp_pre_ciphers; // getValue 使用
-  // vector<vector<DH25519_point>> sender_random_prefixes_dh; // L_p if_match
+  ipcl::CipherText lp_pre_ciphers; // getValue 使用
+
+  vector<u64> random_sums; // Lp DH PSI CA (if match 使用)
+  vector<DH25519_point> sender_random_prefixes_dh; // L_p if match
 
   void clear() {
     for (auto socket : sockets) {
