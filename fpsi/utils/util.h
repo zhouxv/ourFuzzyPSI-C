@@ -183,8 +183,8 @@ inline block get_key_from_dec(string &dec) {
 }
 
 /// 获取 OKVS 的 key, inf
-inline block get_key_from_dim_dec(const u64 &dim, const string &dec,
-                                  const vector<u64> &cell) {
+inline block get_key_from_dim_dec_cell(const u64 &dim, const string &dec,
+                                       const vector<u64> &cell) {
   blake3_hasher hasher;
   block hash_out;
   blake3_hasher_init(&hasher);
@@ -225,9 +225,9 @@ inline block get_key_from_dim_dec_id(const u64 dim, const string &dec, u64 id) {
 }
 
 /// 获取 OKVS 的 key, Lp
-inline block get_key_from_dim_sigma_dec(const u64 &dim, const u64 &sigma,
-                                        const string &dec,
-                                        const vector<u64> &cell) {
+inline block get_key_from_dim_sigma_dec_cell(const u64 &dim, const u64 &sigma,
+                                             const string &dec,
+                                             const vector<u64> &cell) {
   blake3_hasher hasher;
   block hash_out;
   blake3_hasher_init(&hasher);
@@ -236,6 +236,22 @@ inline block get_key_from_dim_sigma_dec(const u64 &dim, const u64 &sigma,
   blake3_hasher_update(&hasher, dec.data(), dec.size());
 
   blake3_hasher_update(&hasher, cell.data(), cell.size() * sizeof(u64));
+
+  blake3_hasher_finalize(&hasher, hash_out.data(), 16);
+
+  return hash_out;
+}
+
+inline block get_key_from_dim_sigma_dec_id(const u64 dim, const u64 sigma,
+                                           const string &dec, const u64 id) {
+  blake3_hasher hasher;
+  block hash_out;
+  blake3_hasher_init(&hasher);
+  blake3_hasher_update(&hasher, &dim, sizeof(dim));
+  blake3_hasher_update(&hasher, &sigma, sizeof(sigma));
+  blake3_hasher_update(&hasher, dec.data(), dec.size());
+
+  blake3_hasher_update(&hasher, &id, sizeof(id));
 
   blake3_hasher_finalize(&hasher, hash_out.data(), 16);
 
