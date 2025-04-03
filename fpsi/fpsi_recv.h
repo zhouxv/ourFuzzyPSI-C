@@ -30,8 +30,8 @@ public:
   vector<coproto::LocalAsyncSocket> &sockets;
 
   // 计算的一些参数
-  pair<set<u64>, u64> OMEGA_PARAM;
-  IfMatchParamTable::ParamType IF_MATCH_PARAM;
+  PrefixParam OMEGA_PARAM;
+  PrefixParam IF_MATCH_PARAM;
   u64 SIDE_LEN;  // 直径
   u64 BLK_CELLS; // 2^DIM
   u64 DELTA_L2;  // delta的平方
@@ -65,7 +65,7 @@ public:
         THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk), dh_sk(dh_sk),
         sockets(sockets) {
     // 参数初始化
-    OMEGA_PARAM = get_omega_params(metric, delta);
+    OMEGA_PARAM = get_omega_params(metric, delta, dim);
     if (metric != 0)
       IF_MATCH_PARAM = get_if_match_params(metric, delta);
     SIDE_LEN = 2 * delta;
@@ -78,7 +78,7 @@ public:
   // Linf test param
   FPSIRecv(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
            vector<pt> &pts, ipcl::PublicKey pk, ipcl::PrivateKey sk,
-           DH25519_number dh_sk, OmegaTable::ParamType param,
+           DH25519_number dh_sk, PrefixParam param,
            vector<coproto::LocalAsyncSocket> &sockets)
       : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
         THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk), dh_sk(dh_sk),
@@ -93,8 +93,7 @@ public:
   // Lp test param
   FPSIRecv(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
            vector<pt> &pts, ipcl::PublicKey pk, ipcl::PrivateKey sk,
-           DH25519_number dh_sk, OmegaTable::ParamType param,
-           IfMatchParamTable::ParamType if_match_param,
+           DH25519_number dh_sk, PrefixParam param, PrefixParam if_match_param,
            vector<coproto::LocalAsyncSocket> &sockets)
       : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
         THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk), dh_sk(dh_sk),

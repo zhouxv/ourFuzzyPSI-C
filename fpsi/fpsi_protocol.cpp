@@ -5,6 +5,7 @@
 #include "fpsi_sender.h"
 #include "fpsi_sender_high.h"
 #include "utils/params_selects.h"
+#include "utils/util.h"
 
 #include <coproto/Socket/LocalAsyncSock.h>
 #include <cryptoTools/Common/CLP.h>
@@ -42,7 +43,7 @@ void run_low_dimension(const CLP &cmd) {
   spdlog::info("send_set_size     : {}", send_size);
   spdlog::info("intersection_size : {}", intersection_size);
   spdlog::info("OMEGA_PARAM       : {}",
-               pairToString(get_omega_params(METRIC, DELTA)));
+               pairToString(get_omega_params(METRIC, DELTA, DIM)));
   if (METRIC != 0)
     spdlog::info("IF_MATCH_PARA     : {}",
                  pairToString(get_if_match_params(METRIC, DELTA)));
@@ -148,13 +149,12 @@ void run_high_dimension(const CLP &cmd) {
   spdlog::info("send_set_size     : {}", send_size);
   spdlog::info("intersection_size : {}", intersection_size);
   spdlog::info("OMEGA_PARAM       : {}",
-               pairToString(get_omega_params(METRIC, DELTA)));
+               pairToString(get_omega_params(METRIC, DELTA, DIM)));
   if (METRIC != 0)
-    spdlog::info("IF_MATCH_PARA   : {}",
+    spdlog::info("IF_MATCH_PARA     : {}",
                  pairToString(get_if_match_params(METRIC, DELTA)));
   spdlog::info("FM_PARAM          : {}",
                pairToString(get_fuzzy_mapping_params(METRIC, DELTA)));
-  // spdlog::info("thread_num        : {}", THREAD_NUM);
   spdlog::info("********************* offline start ************************");
 
   vector<pt> recv_pts(recv_size, vector<u64>(DIM, 0));
@@ -251,14 +251,14 @@ void test_low_dimension(const oc::CLP &cmd) {
         spdlog::set_default_logger(new_logger);
 
         auto t = (metric == 0) ? (del * 2 + 1) : (del + 1);
-        auto params = OmegaUTableALL::getSelectedParam(t);
+        auto params = OmegaParamALL::getSelectedParam(t);
 
         for (auto param : params) {
           if (metric == 0) {
             test_low_dimension_inf(del, metric, num, num, trait, param);
           } else {
-            auto if_match_params = IfMatchParamTableAll::getSelectedParam(
-                fast_pow(del, metric) + 1);
+            auto if_match_params =
+                IfMatchParamAll::getSelectedParam(fast_pow(del, metric) + 1);
             for (auto if_match_param : if_match_params) {
               test_low_dimension_lp(del, metric, num, num, trait, param,
                                     if_match_param);
@@ -272,7 +272,7 @@ void test_low_dimension(const oc::CLP &cmd) {
 
 void test_low_dimension_inf(const u64 DELTA, const u64 METRIC, const u64 logr,
                             const u64 logs, const u64 trait,
-                            const OmegaTable::ParamType &param) {
+                            const PrefixParam &param) {
 
   const u64 DIM = 2;
   const u64 recv_size = 1ull << logr;
@@ -423,8 +423,8 @@ void test_low_dimension_inf(const u64 DELTA, const u64 METRIC, const u64 logr,
 
 void test_low_dimension_lp(const u64 DELTA, const u64 METRIC, const u64 logr,
                            const u64 logs, const u64 trait,
-                           const OmegaTable::ParamType &param,
-                           const IfMatchParamTable::ParamType &if_match_param) {
+                           const PrefixParam &param,
+                           const PrefixParam &if_match_param) {
 
   const u64 DIM = 2;
   const u64 recv_size = 1ull << logr;
@@ -597,20 +597,16 @@ void test_high_dimension(const oc::CLP &cmd) {
               true);
           spdlog::set_default_logger(new_logger);
 
-          auto t = (metric == 0) ? (del * 2 + 1) : (del + 1);
-          auto params = OmegaUTableALL::getSelectedParam(t);
+          auto omega_t = (metric == 0) ? (del * 2 + 1) : (del + 1);
+          auto fm_t = del * 2 + 1;
+          auto omega_params = OmegaParamALL::getSelectedParam(omega_t);
+          auto fm_params = FuzzyMappingParamALL::getSelectedParam(fm_t);
 
-          for (auto param : params) {
-            // if (metric == 0) {
-            test_high_dimension(del, metric, num, num, dim, trait, param);
-            // }
-
-            // else {
-            // auto if_match_params = IfMatchParamTableAll::getSelectedParam(
-            //     fast_pow(del, metric) + 1);
-            // for (auto if_match_param : if_match_params) {
-            // test_high_dimension_lp(del, metric, num, num, dim, trait, param);
-            // }
+          for (auto omega : omega_params) {
+            for (auto fm_param : fm_params) {
+              test_high_dimension(del, metric, num, num, dim, trait, omega,
+                                  fm_param);
+            }
           }
         }
 
@@ -622,7 +618,8 @@ void test_high_dimension(const oc::CLP &cmd) {
 
 void test_high_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
                          const u64 logs, const u64 dim, const u64 trait,
-                         const OmegaTable::ParamType &param) {
+                         const PrefixParam &param,
+                         const PrefixParam &fm_param) {
 
   const u64 DIM = dim;
   const u64 recv_size = 1ull << logr;
@@ -639,6 +636,7 @@ void test_high_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
   spdlog::info("delta             : {}", DELTA);
   spdlog::info("metric            : l_{}", METRIC);
   spdlog::info("param             : {}", pairToString(param));
+  spdlog::info("fm_param          : {}", pairToString(fm_param));
   spdlog::info("recv_set_size     : {}", recv_size);
   spdlog::info("send_set_size     : {}", send_size);
   spdlog::info("intersection_size : {}", intersection_size);
@@ -675,9 +673,10 @@ void test_high_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
     // 接收方和发送方初始化
     FPSIRecvH recv(DIM, DELTA, recv_size, METRIC, 1, recv_pts,
                    paillier_key.pub_key, paillier_key.priv_key, recv_dh_k,
-                   param, socketPair0);
+                   param, fm_param, socketPair0);
     FPSISenderH sender(DIM, DELTA, send_size, METRIC, 1, send_pts,
-                       paillier_key.pub_key, send_dh_k, param, socketPair1);
+                       paillier_key.pub_key, send_dh_k, param, fm_param,
+                       socketPair1);
 
     spdlog::info("这是第 {} 个测试运行", i);
 
@@ -741,11 +740,20 @@ void test_high_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
     comm_sums[i] = total_com;
   }
 
-  cout << std::format("n_r: {} , n_s: {} , dim: {} , delta: {} , metric: {}, "
-                      "OMEGA_PARAM: {}",
-                      recv_size, recv_size, DIM, DELTA, METRIC,
-                      pairToString(param))
-       << endl;
+  if (METRIC == 0) {
+    cout << std::format("n_r: {} , n_s: {} , dim: {} , delta: {} , metric: {}, "
+                        "omega_param: {}, fm_param: {}",
+                        recv_size, recv_size, DIM, DELTA, METRIC,
+                        pairToString(param), pairToString(fm_param))
+         << endl;
+  } else {
+    cout << std::format("n_r: {} , n_s: {} , dim: {} , delta: {} , metric: {}, "
+                        "omega_param: {}, fm_param: {}, if_match_param: {}",
+                        recv_size, recv_size, DIM, DELTA, METRIC,
+                        pairToString(param), pairToString(fm_param),
+                        pairToString(get_if_match_params(METRIC, DELTA)))
+         << endl;
+  }
 
   for (u64 i = 0; i < trait; i++) {
     cout << std::format("{} 在线时间: {} ms , 通信: {} MB", i, time_sums[i],

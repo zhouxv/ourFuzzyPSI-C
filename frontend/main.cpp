@@ -30,10 +30,10 @@ int main(int argc, char **argv) {
     run_low_dimension(cmd);
     break;
   case 2:
-    test_low_dimension(cmd);
+    run_high_dimension(cmd);
     break;
   case 3:
-    run_high_dimension(cmd);
+    test_low_dimension(cmd);
     break;
   case 4:
     test_high_dimension(cmd);
