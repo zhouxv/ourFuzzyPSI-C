@@ -277,8 +277,14 @@ const PrefixParam get_omega_params(u64 metric, u64 delta, u64 dim) {
 
   auto t = (metric == 0) ? (delta * 2 + 1) : (delta + 1);
 
-  return (dim <= 2) ? OmegaLowTable::getSelectedParam(t)
-                    : OmegaHighTable::getSelectedParam(t);
+  PrefixParam param;
+  if (dim <= 2) {
+    param = OmegaLowTable::getSelectedParam(t);
+  } else {
+    param = (metric == 0) ? OmegaHighLinfTable::getSelectedParam(t)
+                          : OmegaHighLpTable::getSelectedParam(t);
+  }
+  return param;
 }
 
 const PrefixParam get_if_match_params(u64 metric, u64 delta) {

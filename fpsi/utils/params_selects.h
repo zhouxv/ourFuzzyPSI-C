@@ -47,24 +47,54 @@ public:
   }
 };
 
-class OmegaHighTable {
+class OmegaHighLinfTable {
 public:
   static const map<u64, PrefixParam> &getTable() {
     static once_flag flag;
     static map<u64, PrefixParam> params;
 
     call_once(flag, []() {
-      params[17] = {{0, 1, 2, 3}, 5};
+      params[33] = {{0, 2}, 12};
 
-      params[33] = {{0, 1, 2, 3, 4}, 6};
+      params[65] = {{0, 3}, 16};
 
-      params[65] = {{0, 1, 2, 3, 4, 5}, 7};
+      params[129] = {{0, 1, 3, 5}, 11};
 
-      params[129] = {{0, 1, 2, 3, 4, 5, 6}, 8};
+      params[257] = {{0, 2, 4, 6}, 14};
 
-      params[257] = {{0, 1, 2, 3, 4, 5, 6, 7}, 9};
+      params[513] = {{0, 2, 4, 6}, 18};
+    });
 
-      params[513] = {{0, 1, 2, 3, 4, 5, 6, 7, 8}, 10};
+    return params;
+  }
+
+  static PrefixParam getSelectedParam(u64 t) {
+    const auto &params = getTable();
+    auto it = params.find(t);
+    if (it != params.end())
+      return it->second;
+
+    throw std::out_of_range("getSelectedParam Invalid parameter key: " +
+                            std::to_string(t));
+  }
+};
+
+class OmegaHighLpTable {
+public:
+  static const map<u64, PrefixParam> &getTable() {
+    static once_flag flag;
+    static map<u64, PrefixParam> params;
+
+    call_once(flag, []() {
+      params[17] = {{0, 2}, 8};
+
+      params[33] = {{0, 2}, 12};
+
+      params[65] = {{0, 1, 3, 4}, 9};
+
+      params[129] = {{0, 1, 3, 5}, 11};
+
+      params[257] = {{0, 2, 4, 6}, 14};
     });
 
     return params;
