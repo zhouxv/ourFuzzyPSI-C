@@ -83,12 +83,11 @@ vector<u64> sum_combinations(const oc::span<u32> &results, u64 dim);
 u64 fast_pow(u64 base, u64 exp);
 u64 combination(u64 n, u64 k);
 
-const OmegaTable::ParamType get_omega_params(u64 metric, u64 delta);
+const PrefixParam get_omega_params(u64 metric, u64 delta, u64 dim);
 
-const IfMatchParamTable::ParamType get_if_match_params(u64 metric, u64 delta);
+const PrefixParam get_if_match_params(u64 metric, u64 delta);
 
-const FuzzyMappingParamTable::ParamType get_fuzzy_mapping_params(u64 metric,
-                                                                 u64 delta);
+const PrefixParam get_fuzzy_mapping_params(u64 metric, u64 delta);
 
 // 密文与block的转换
 std::vector<block> bignumer_to_block_vector(const BigNumber &bn);

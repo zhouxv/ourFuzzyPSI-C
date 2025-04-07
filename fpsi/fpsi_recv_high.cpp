@@ -106,8 +106,6 @@ void FPSIRecvH::get_ID() {
   spdlog::debug("recv getID() idx获取完成");
 
   // get list encoding
-
-  FUZZY_MAPPING_PARAM = FuzzyMappingParamTable::getSelectedParam(DELTA * 2 + 1);
   u64 okvs_mN = PTS_NUM * FUZZY_MAPPING_PARAM.second;
 
   RBOKVS rb_okvs;

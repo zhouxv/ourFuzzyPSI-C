@@ -7,11 +7,10 @@
 #include <cryptoTools/Crypto/PRNG.h>
 #include <ipcl/ipcl.hpp>
 
-#include "config.h"
-
 #include "fpsi_protocol.h"
 #include "test_all.h"
 
+using namespace osuCrypto;
 int main(int argc, char **argv) {
   CLP cmd;
   cmd.parse(argc, argv);
@@ -39,47 +38,57 @@ int main(int argc, char **argv) {
     switch (protocol_type) {
     case 1:
       run_low_dimension(cmd);
-      return 0;
+      break;
     case 2:
       run_high_dimension(cmd);
-      return 0;
+      break;
+    case 3:
+      test_low_dimension(cmd);
+      break;
+    case 4:
+      test_high_dimension(cmd);
+      break;
+    default:
+      throw std::runtime_error("unknown protocol");
     }
+    return 0;
   }
 
-  // 选择测试内容
   if (cmd.isSet("t")) {
     const u64 protocol_type = cmd.getOr("t", 0);
 
     switch (protocol_type) {
     case 1:
       test_decompose_correction(cmd);
-      return 0;
+      break;
     case 2:
       test_all_psi_params(cmd);
-      return 0;
+      break;
     case 3:
       test_if_match_params(cmd);
-      return 0;
+      break;
     case 4:
       test_paillier();
-      return 0;
+      break;
     case 5:
       test_bitset();
-      return 0;
+      break;
     case 6:
       test_u64_random_he(cmd);
-      return 0;
+      break;
     case 7:
       test_low_bound(cmd);
-      return 0;
+      break;
     case 8:
       test_batch_pis(cmd);
-      return 0;
+      break;
     case 9:
       test_paillier_neg();
-      return 0;
+      break;
+    default:
+      throw std::runtime_error("unknown protocol");
     }
-  }
 
-  return 0;
+    return 0;
+  }
 }

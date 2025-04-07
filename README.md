@@ -3,7 +3,7 @@
 
 This code and following instructions are tested on Ubuntu 20.04, with `g++ 13.1.0, CMake 3.30.5, GNU Make 4.2.1`.
 
-### Install dependencies
+### Install dependencies and build
 
 ```bash
 ##############################
@@ -45,8 +45,25 @@ cmake -DCMAKE_BUILD_TYPE=Debug ../..
 cmake -DCMAKE_BUILD_TYPE=Release ../..
 cmake ../..
 make -j
+```
 
-./main -p -m 0 -d 2 -r 8 -s 8 -i 3 -delta 16
-gdb --args ./main -p -m 0 -d 2 -r 4 -s 4 -i 3 -delta 16
-valgrind ./main -p -m 0 -d 2 -r 8 -s 8 -i 3 -delta 16
+### Command to run the executable file
+#### Command Flags
+| Flag | Meaning             | Optional Values                                |
+|:----:|:-------------------:|----------------------------------------------|
+| p    | Protocol Type       | 1: Low-dimensional protocol<br>2: High-dimensional protocol |
+| d    | Dimension           | Tested dimensions: 2, 5, 8                     |
+| delta| Radius              | Only for 16, 32, 64, 128, 256                           |
+| m    | Metric              | 0: L<sub>∞</sub><br>1: L<sub>1</sub><br>2: L<sub>2</sub>                |
+| r    | Log Receiver Count  | Tested values: 4, 8, 12 (only supports balanced case) |
+| s    | Log Sender Count    | Tested values: 4, 8, 12 (only supports balanced case) |
+| i    | Size of intersection | Should not be greater than set_size |
+
+#### Command samples
+```bash
+# low dimension L_inf
+./main -p 1 -d 2 -m 0 -r 4 -s 4 -delta 16 -i 2
+
+# high dimension L_2
+./main -p 2 -d 5 -m 2 -r 4 -s 4 -delta 16 -i 4
 ```

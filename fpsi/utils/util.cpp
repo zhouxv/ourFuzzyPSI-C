@@ -27,8 +27,8 @@ void sample_points(u64 dim, u64 delta, u64 send_size, u64 recv_size,
     }
   }
 
-  // u64 base_pos = (prng.get<u64>()) % (send_size - intersection_size - 1);
-  u64 base_pos = 0;
+  u64 base_pos = (prng.get<u64>()) % (send_size - intersection_size - 1);
+  // u64 base_pos = 0;
   for (u64 i = base_pos; i < base_pos + intersection_size; i++) {
     for (u64 j = 0; j < dim; j++) {
       send_pts[i][j] = recv_pts[i - base_pos][j];
@@ -270,17 +270,24 @@ u64 fast_pow(u64 base, u64 exp) {
 /// assert_eq!(merged, vec![(0, 2), (3, 5), (6, 8)]);
 /// ```
 
-const OmegaTable::ParamType get_omega_params(u64 metric, u64 delta) {
+const PrefixParam get_omega_params(u64 metric, u64 delta, u64 dim) {
   if (metric < 0 || metric > 2) {
     throw invalid_argument("get_omega_params: Invalid metric value.");
   }
 
   auto t = (metric == 0) ? (delta * 2 + 1) : (delta + 1);
 
-  return OmegaTable::getSelectedParam(t);
+  PrefixParam param;
+  if (dim <= 2) {
+    param = OmegaLowTable::getSelectedParam(t);
+  } else {
+    param = (metric == 0) ? OmegaHighLinfTable::getSelectedParam(t)
+                          : OmegaHighLpTable::getSelectedParam(t);
+  }
+  return param;
 }
 
-const IfMatchParamTable::ParamType get_if_match_params(u64 metric, u64 delta) {
+const PrefixParam get_if_match_params(u64 metric, u64 delta) {
   if (metric != 1 && metric != 2) {
     throw invalid_argument("get_if_match_params: Invalid metric value.");
   }
@@ -288,13 +295,12 @@ const IfMatchParamTable::ParamType get_if_match_params(u64 metric, u64 delta) {
   return IfMatchParamTable::getSelectedParam(fast_pow(delta, metric) + 1);
 }
 
-const FuzzyMappingParamTable::ParamType get_fuzzy_mapping_params(u64 metric,
-                                                                 u64 delta) {
+const PrefixParam get_fuzzy_mapping_params(u64 metric, u64 delta) {
   if (metric < 0 || metric > 2) {
     throw invalid_argument("get_fuzzy_mapping_params: Invalid metric value.");
   }
 
-  auto t = (metric == 0) ? (delta * 2 + 1) : (delta + 1);
+  auto t = delta * 2 + 1;
 
   return FuzzyMappingParamTable::getSelectedParam(t);
 }
