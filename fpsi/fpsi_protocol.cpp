@@ -7,25 +7,29 @@
 #include "utils/params_selects.h"
 #include "utils/util.h"
 
+#include <coproto/Socket/AsioSocket.h>
 #include <coproto/Socket/LocalAsyncSock.h>
 #include <cryptoTools/Common/CLP.h>
 #include <cryptoTools/Common/Defines.h>
 #include <cryptoTools/Common/Timer.h>
 #include <cryptoTools/Crypto/PRNG.h>
-#include <format>
-#include <numeric>
+#include <iostream>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
+#include <string>
 #include <vector>
 
 void run_low_dimension(const CLP &cmd) {
   const u64 DIM = cmd.getOr("d", 2);
   const u64 DELTA = cmd.getOr("delta", 16);
   const u64 METRIC = cmd.getOr("m", 2);
+  const u64 THREAD_NUM = cmd.getOr("th", 1);
   const u64 recv_size = 1ull << cmd.getOr("r", 8);
   const u64 send_size = 1ull << cmd.getOr("s", 8);
-  const u64 intersection_size = cmd.getOr("i", 32);
-  // const u64 THREAD_NUM = cmd.getOr("th", 1);
+  const u64 intersection_size = cmd.getOr("i", 15);
+
+  const string IP = cmd.getOr<string>("ip", "127.0.0.1");
+  const u64 PORT = cmd.getOr<u64>("port", 1212);
 
   if ((intersection_size > recv_size) | (intersection_size > send_size)) {
     spdlog::error("intersection_size should not be greater than set_size");
@@ -42,12 +46,13 @@ void run_low_dimension(const CLP &cmd) {
   spdlog::info("recv_set_size     : {}", recv_size);
   spdlog::info("send_set_size     : {}", send_size);
   spdlog::info("intersection_size : {}", intersection_size);
+  spdlog::info("address           : {}:{}", IP, PORT);
   spdlog::info("OMEGA_PARAM       : {}",
                pairToString(get_omega_params(METRIC, DELTA, DIM)));
   if (METRIC != 0)
     spdlog::info("IF_MATCH_PARA     : {}",
                  pairToString(get_if_match_params(METRIC, DELTA)));
-  // spdlog::info("thread_num        : {}", THREAD_NUM);
+  spdlog::info("thread_num        : {}", THREAD_NUM);
   spdlog::info("********************* offline start ************************");
 
   vector<pt> recv_pts(recv_size, vector<u64>(DIM, 0));
@@ -70,13 +75,25 @@ void run_low_dimension(const CLP &cmd) {
   DH25519_number recv_dh_k(prng);
   DH25519_number send_dh_k(prng);
 
-  // 本地网络通信初始化
-  vector<coproto::LocalAsyncSocket> socketPair0, socketPair1;
-  for (u64 i = 0; i < 1; ++i) {
-    auto socketPair = coproto::LocalAsyncSocket::makePair();
-    socketPair0.push_back(socketPair[0]);
-    socketPair1.push_back(socketPair[1]);
-  }
+  // 网络通信初始化
+  vector<coproto::Socket> socketPair0, socketPair1;
+  auto init_socks = [&](Role role) {
+    for (u64 i = 0; i < THREAD_NUM; ++i) {
+      auto port_temp = PORT + i;
+      auto addr = IP + ":" + std::to_string(port_temp);
+      if (role == Role::Recv) {
+        socketPair0.push_back(coproto::asioConnect(addr, true));
+      } else {
+        socketPair1.push_back(coproto::asioConnect(addr, false));
+      }
+    }
+  };
+
+  std::thread recv_socks(init_socks, Role::Recv);
+  std::thread sender_socks(init_socks, Role::Sender);
+
+  recv_socks.join();
+  sender_socks.join();
   spdlog::info("双方网络初始化完成");
 
   // 接收方和发送方初始化
@@ -120,7 +137,6 @@ void run_low_dimension(const CLP &cmd) {
   recv.print_commus();
   cout << "\n";
   sender.print_commus();
-
   return;
 }
 
@@ -128,10 +144,13 @@ void run_high_dimension(const CLP &cmd) {
   const u64 DIM = cmd.getOr("d", 5);
   const u64 DELTA = cmd.getOr("delta", 16);
   const u64 METRIC = cmd.getOr("m", 2);
+  const u64 THREAD_NUM = cmd.getOr("th", 1);
   const u64 recv_size = 1ull << cmd.getOr("r", 8);
   const u64 send_size = 1ull << cmd.getOr("s", 8);
   const u64 intersection_size = cmd.getOr("i", 15);
-  const u64 THREAD_NUM = cmd.getOr("th", 1);
+
+  const string IP = cmd.getOr<string>("ip", "127.0.0.1");
+  const u64 PORT = cmd.getOr<u64>("port", 1212);
 
   if ((intersection_size > recv_size) | (intersection_size > send_size)) {
     spdlog::error("intersection_size should not be greater than set_size");
@@ -148,6 +167,7 @@ void run_high_dimension(const CLP &cmd) {
   spdlog::info("recv_set_size     : {}", recv_size);
   spdlog::info("send_set_size     : {}", send_size);
   spdlog::info("intersection_size : {}", intersection_size);
+  spdlog::info("address           : {}:{}", IP, PORT);
   spdlog::info("OMEGA_PARAM       : {}",
                pairToString(get_omega_params(METRIC, DELTA, DIM)));
   if (METRIC != 0)
@@ -177,13 +197,25 @@ void run_high_dimension(const CLP &cmd) {
   DH25519_number recv_dh_k(prng);
   DH25519_number send_dh_k(prng);
 
-  // 本地网络通信初始化
-  vector<coproto::LocalAsyncSocket> socketPair0, socketPair1;
-  for (u64 i = 0; i < 1; ++i) {
-    auto socketPair = coproto::LocalAsyncSocket::makePair();
-    socketPair0.push_back(socketPair[0]);
-    socketPair1.push_back(socketPair[1]);
-  }
+  // 网络通信初始化
+  vector<coproto::Socket> socketPair0, socketPair1;
+  auto init_socks = [&](Role role) {
+    for (u64 i = 0; i < THREAD_NUM; ++i) {
+      auto port_temp = PORT + i;
+      auto addr = IP + ":" + std::to_string(port_temp);
+      if (role == Role::Recv) {
+        socketPair0.push_back(coproto::asioConnect(addr, true));
+      } else {
+        socketPair1.push_back(coproto::asioConnect(addr, false));
+      }
+    }
+  };
+
+  std::thread recv_socks(init_socks, Role::Recv);
+  std::thread sender_socks(init_socks, Role::Sender);
+
+  recv_socks.join();
+  sender_socks.join();
   spdlog::info("双方网络初始化完成");
 
   // 接收方和发送方初始化
@@ -231,7 +263,7 @@ void run_high_dimension(const CLP &cmd) {
 }
 
 void test_low_dimension(const oc::CLP &cmd) {
-  const u64 trait = cmd.getOr("trait", 50);
+  const u64 trait = cmd.getOr("trait", 10);
   const vector<u64> metrics = cmd.getManyOr<u64>("m", {0, 1, 2});
   const vector<u64> deltas =
       cmd.getManyOr<u64>("delta", {16, 32, 64, 128, 256});
@@ -239,6 +271,9 @@ void test_low_dimension(const oc::CLP &cmd) {
 
   // vector<u64> metrics = {0, 1, 2};
   // vector<u64> deltas = {16, 32, 64, 128, 256};
+
+  const string ip = cmd.getOr<string>("ip", "127.0.0.1");
+  const u64 port = cmd.getOr<u64>("port", 1212);
 
   for (auto num : nums) {         // 集合数量
     for (auto metric : metrics) { // p
@@ -255,13 +290,14 @@ void test_low_dimension(const oc::CLP &cmd) {
 
         for (auto param : params) {
           if (metric == 0) {
-            test_low_dimension_inf(del, metric, num, num, trait, param);
+            test_low_dimension_inf(del, metric, ip, port, num, num, trait,
+                                   param);
           } else {
             auto if_match_params =
                 IfMatchParamAll::getSelectedParam(fast_pow(del, metric) + 1);
             for (auto if_match_param : if_match_params) {
-              test_low_dimension_lp(del, metric, num, num, trait, param,
-                                    if_match_param);
+              test_low_dimension_lp(del, metric, ip, port, num, num, trait,
+                                    param, if_match_param);
             }
           }
         }
@@ -270,9 +306,9 @@ void test_low_dimension(const oc::CLP &cmd) {
   }
 }
 
-void test_low_dimension_inf(const u64 DELTA, const u64 METRIC, const u64 logr,
-                            const u64 logs, const u64 trait,
-                            const PrefixParam &param) {
+void test_low_dimension_inf(const u64 DELTA, const u64 METRIC, string IP,
+                            u64 PORT, const u64 logr, const u64 logs,
+                            const u64 trait, const PrefixParam &param) {
 
   const u64 DIM = 2;
   const u64 recv_size = 1ull << logr;
@@ -285,13 +321,14 @@ void test_low_dimension_inf(const u64 DELTA, const u64 METRIC, const u64 logr,
   }
 
   spdlog::info("*********************** setting ****************************");
-  spdlog::info("dimension         : {}", DIM);
+  spdlog::info("dimension         : {} ", DIM);
   spdlog::info("delta             : {}", DELTA);
-  spdlog::info("metric            : l_{}", METRIC);
-  spdlog::info("param             : {}", pairToString(param));
+  spdlog::info("metric            : l_ {} ", METRIC);
+  spdlog::info("param             : {} ", pairToString(param));
   spdlog::info("recv_set_size     : {}", recv_size);
   spdlog::info("send_set_size     : {}", send_size);
   spdlog::info("intersection_size : {}", intersection_size);
+  spdlog::info("address           : {}:{}", IP, PORT);
   spdlog::info("trait             : {}", trait);
 
   vector<double> time_sums(trait, 0);
@@ -312,13 +349,25 @@ void test_low_dimension_inf(const u64 DELTA, const u64 METRIC, const u64 logr,
   DH25519_number recv_dh_k(prng);
   DH25519_number send_dh_k(prng);
 
-  // 本地网络通信初始化
-  vector<coproto::LocalAsyncSocket> socketPair0, socketPair1;
-  for (u64 i = 0; i < 1; ++i) {
-    auto socketPair = coproto::LocalAsyncSocket::makePair();
-    socketPair0.push_back(socketPair[0]);
-    socketPair1.push_back(socketPair[1]);
-  }
+  // 网络通信初始化
+  vector<coproto::Socket> socketPair0, socketPair1;
+  auto init_socks = [&](Role role) {
+    for (u64 i = 0; i < 1; ++i) {
+      auto port_temp = PORT + i;
+      auto addr = IP + ":" + std::to_string(port_temp);
+      if (role == Role::Recv) {
+        socketPair0.push_back(coproto::asioConnect(addr, true));
+      } else {
+        socketPair1.push_back(coproto::asioConnect(addr, false));
+      }
+    }
+  };
+
+  std::thread recv_socks(init_socks, Role::Recv);
+  std::thread sender_socks(init_socks, Role::Sender);
+
+  recv_socks.join();
+  sender_socks.join();
   spdlog::info("双方网络初始化完成");
 
   // 接收方和发送方初始化
@@ -394,7 +443,7 @@ void test_low_dimension_inf(const u64 DELTA, const u64 METRIC, const u64 logr,
     sender.clear();
   }
 
-  cout << std::format("n_r: {} , n_s: {} , delta: {} , metric: {}, PARAM: {}",
+  cout << std::format("n_r: {} , n_s: {} , delta: {} , metric: {}, PARAM: {} ",
                       recv_size, recv_size, DELTA, METRIC, pairToString(param))
        << endl;
 
@@ -409,7 +458,7 @@ void test_low_dimension_inf(const u64 DELTA, const u64 METRIC, const u64 logr,
 
   double avg_com = accumulate(comm_sums.begin(), comm_sums.end(), 0.0) / trait;
 
-  cout << std::format("平均: 在线时间: {} ms , 通信:  {} MB, 通过数: {} / {}",
+  cout << std::format("平均: 在线时间: {} ms , 通信:  {} MB, 通过数: {}/{}",
                       avg_online_time, avg_com, pass_count, trait)
        << endl;
 
@@ -421,9 +470,9 @@ void test_low_dimension_inf(const u64 DELTA, const u64 METRIC, const u64 logr,
   return;
 }
 
-void test_low_dimension_lp(const u64 DELTA, const u64 METRIC, const u64 logr,
-                           const u64 logs, const u64 trait,
-                           const PrefixParam &param,
+void test_low_dimension_lp(const u64 DELTA, const u64 METRIC, string IP,
+                           u64 PORT, const u64 logr, const u64 logs,
+                           const u64 trait, const PrefixParam &param,
                            const PrefixParam &if_match_param) {
 
   const u64 DIM = 2;
@@ -437,14 +486,15 @@ void test_low_dimension_lp(const u64 DELTA, const u64 METRIC, const u64 logr,
   }
 
   spdlog::info("*********************** setting ****************************");
-  spdlog::info("dimension         : {}", DIM);
+  spdlog::info("dimension : {} ", DIM);
   spdlog::info("delta             : {}", DELTA);
-  spdlog::info("metric            : l_{}", METRIC);
-  spdlog::info("param             : {}", pairToString(param));
+  spdlog::info("metric            : l_ {} ", METRIC);
+  spdlog::info("param             : {} ", pairToString(param));
   spdlog::info("if_match_param    : {}", pairToString(if_match_param));
   spdlog::info("recv_set_size     : {}", recv_size);
   spdlog::info("send_set_size     : {}", send_size);
   spdlog::info("intersection_size : {}", intersection_size);
+  spdlog::info("address           : {}:{}", IP, PORT);
   spdlog::info("trait             : {}", trait);
 
   vector<double> time_sums(trait, 0);
@@ -465,13 +515,25 @@ void test_low_dimension_lp(const u64 DELTA, const u64 METRIC, const u64 logr,
   DH25519_number recv_dh_k(prng);
   DH25519_number send_dh_k(prng);
 
-  // 本地网络通信初始化
-  vector<coproto::LocalAsyncSocket> socketPair0, socketPair1;
-  for (u64 i = 0; i < 1; ++i) {
-    auto socketPair = coproto::LocalAsyncSocket::makePair();
-    socketPair0.push_back(socketPair[0]);
-    socketPair1.push_back(socketPair[1]);
-  }
+  // 网络通信初始化
+  vector<coproto::Socket> socketPair0, socketPair1;
+  auto init_socks = [&](Role role) {
+    for (u64 i = 0; i < 1; ++i) {
+      auto port_temp = PORT + i;
+      auto addr = IP + ":" + std::to_string(port_temp);
+      if (role == Role::Recv) {
+        socketPair0.push_back(coproto::asioConnect(addr, true));
+      } else {
+        socketPair1.push_back(coproto::asioConnect(addr, false));
+      }
+    }
+  };
+
+  std::thread recv_socks(init_socks, Role::Recv);
+  std::thread sender_socks(init_socks, Role::Sender);
+
+  recv_socks.join();
+  sender_socks.join();
   spdlog::info("双方网络初始化完成");
 
   // 接收方和发送方初始化
@@ -566,7 +628,7 @@ void test_low_dimension_lp(const u64 DELTA, const u64 METRIC, const u64 logr,
 
   double avg_com = accumulate(comm_sums.begin(), comm_sums.end(), 0.0) / trait;
 
-  cout << std::format("平均: 在线时间: {} ms , 通信:  {} MB, 通过数: {} / {}",
+  cout << std::format("平均: 在线时间: {} ms , 通信:  {} MB, 通过数: {}/{} ",
                       avg_online_time, avg_com, pass_count, trait)
        << endl;
 
@@ -586,7 +648,10 @@ void test_high_dimension(const oc::CLP &cmd) {
       cmd.getManyOr<u64>("delta", {16, 32, 64, 128, 256});
   const vector<u64> nums = cmd.getManyOr<u64>("size", {4, 8, 12});
 
-  bool param_select = cmd.getOr("param", true);
+  bool param_select = cmd.getOr("param", false);
+
+  const string ip = cmd.getOr<string>("ip", "127.0.0.1");
+  const u64 port = cmd.getOr<u64>("port", 1212);
 
   for (auto num : nums) { // 集合数量
     for (auto dim : dims) {
@@ -607,24 +672,22 @@ void test_high_dimension(const oc::CLP &cmd) {
 
             for (auto omega : omega_params) {
               for (auto fm_param : fm_params) {
-                test_high_dimension(del, metric, num, num, dim, trait, omega,
-                                    fm_param);
+                test_high_dimension(del, metric, ip, port, num, num, dim, trait,
+                                    omega, fm_param);
               }
             }
           } else {
-            test_high_dimension(del, metric, num, num, dim, trait);
+            test_high_dimension(del, metric, ip, port, num, num, dim, trait);
           }
         }
-
-        //
       }
     }
   }
 }
 
-void test_high_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
-                         const u64 logs, const u64 dim, const u64 trait,
-                         const PrefixParam &param,
+void test_high_dimension(const u64 DELTA, const u64 METRIC, string IP, u64 PORT,
+                         const u64 logr, const u64 logs, const u64 dim,
+                         const u64 trait, const PrefixParam &param,
                          const PrefixParam &fm_param) {
 
   const u64 DIM = dim;
@@ -638,10 +701,10 @@ void test_high_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
   }
 
   spdlog::info("*********************** setting ****************************");
-  spdlog::info("dimension         : {}", DIM);
+  spdlog::info("dimension         : {} ", DIM);
   spdlog::info("delta             : {}", DELTA);
-  spdlog::info("metric            : l_{}", METRIC);
-  spdlog::info("param             : {}", pairToString(param));
+  spdlog::info("metric            : l_ {} ", METRIC);
+  spdlog::info("param             : {} ", pairToString(param));
   spdlog::info("fm_param          : {}", pairToString(fm_param));
   spdlog::info("recv_set_size     : {}", recv_size);
   spdlog::info("send_set_size     : {}", send_size);
@@ -666,15 +729,28 @@ void test_high_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
   DH25519_number recv_dh_k(prng);
   DH25519_number send_dh_k(prng);
 
-  for (u64 i = 0; i < trait; i++) {
-    // 本地网络通信初始化
-    vector<coproto::LocalAsyncSocket> socketPair0, socketPair1;
+  // 网络通信初始化
+  vector<coproto::Socket> socketPair0, socketPair1;
+  auto init_socks = [&](Role role) {
     for (u64 i = 0; i < 1; ++i) {
-      auto socketPair = coproto::LocalAsyncSocket::makePair();
-      socketPair0.push_back(socketPair[0]);
-      socketPair1.push_back(socketPair[1]);
+      auto port_temp = PORT + i;
+      auto addr = IP + ":" + std::to_string(port_temp);
+      if (role == Role::Recv) {
+        socketPair0.push_back(coproto::asioConnect(addr, true));
+      } else {
+        socketPair1.push_back(coproto::asioConnect(addr, false));
+      }
     }
-    spdlog::info("双方网络初始化完成");
+  };
+
+  std::thread recv_socks(init_socks, Role::Recv);
+  std::thread sender_socks(init_socks, Role::Sender);
+
+  recv_socks.join();
+  sender_socks.join();
+  spdlog::info("双方网络初始化完成");
+
+  for (u64 i = 0; i < trait; i++) {
 
     // 接收方和发送方初始化
     FPSIRecvH recv(DIM, DELTA, recv_size, METRIC, 1, recv_pts,
@@ -744,6 +820,9 @@ void test_high_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
 
     time_sums[i] = online_time;
     comm_sums[i] = total_com;
+
+    recv.clear();
+    sender.clear();
   }
 
   if (METRIC == 0) {
@@ -772,7 +851,7 @@ void test_high_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
 
   double avg_com = accumulate(comm_sums.begin(), comm_sums.end(), 0.0) / trait;
 
-  cout << std::format("平均: 在线时间: {} ms , 通信:  {} MB, 通过数: {} / {}",
+  cout << std::format("平均: 在线时间: {} ms , 通信:  {} MB, 通过数: {}/{} ",
                       avg_online_time, avg_com, pass_count, trait)
        << endl;
 
@@ -784,8 +863,9 @@ void test_high_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
   return;
 }
 
-void test_high_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
-                         const u64 logs, const u64 dim, const u64 trait) {
+void test_high_dimension(const u64 DELTA, const u64 METRIC, string IP, u64 PORT,
+                         const u64 logr, const u64 logs, const u64 dim,
+                         const u64 trait) {
   const u64 DIM = dim;
   const u64 recv_size = 1ull << logr;
   const u64 send_size = 1ull << logs;
@@ -800,10 +880,10 @@ void test_high_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
   auto fm_param = get_fuzzy_mapping_params(METRIC, DELTA);
 
   spdlog::info("*********************** setting ****************************");
-  spdlog::info("dimension         : {}", DIM);
-  spdlog::info("delta             : {}", DELTA);
-  spdlog::info("metric            : l_{}", METRIC);
-  spdlog::info("param             : {}", pairToString(omega));
+  spdlog::info("dimension         : {} ", DIM);
+  spdlog::info("delta             : {} ", DELTA);
+  spdlog::info("metric            : l_{} ", METRIC);
+  spdlog::info("param             : {} ", pairToString(omega));
   spdlog::info("fm_param          : {}", pairToString(fm_param));
   spdlog::info("recv_set_size     : {}", recv_size);
   spdlog::info("send_set_size     : {}", send_size);
@@ -828,16 +908,28 @@ void test_high_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
   DH25519_number recv_dh_k(prng);
   DH25519_number send_dh_k(prng);
 
-  for (u64 i = 0; i < trait; i++) {
-    // 本地网络通信初始化
-    vector<coproto::LocalAsyncSocket> socketPair0, socketPair1;
+  // 网络通信初始化
+  vector<coproto::Socket> socketPair0, socketPair1;
+  auto init_socks = [&](Role role) {
     for (u64 i = 0; i < 1; ++i) {
-      auto socketPair = coproto::LocalAsyncSocket::makePair();
-      socketPair0.push_back(socketPair[0]);
-      socketPair1.push_back(socketPair[1]);
+      auto port_temp = PORT + i;
+      auto addr = IP + ":" + std::to_string(port_temp);
+      if (role == Role::Recv) {
+        socketPair0.push_back(coproto::asioConnect(addr, true));
+      } else {
+        socketPair1.push_back(coproto::asioConnect(addr, false));
+      }
     }
-    spdlog::info("双方网络初始化完成");
+  };
 
+  std::thread recv_socks(init_socks, Role::Recv);
+  std::thread sender_socks(init_socks, Role::Sender);
+
+  recv_socks.join();
+  sender_socks.join();
+  spdlog::info("双方网络初始化完成");
+
+  for (u64 i = 0; i < trait; i++) {
     // 接收方和发送方初始化
     FPSIRecvH recv(DIM, DELTA, recv_size, METRIC, 1, recv_pts,
                    paillier_key.pub_key, paillier_key.priv_key, recv_dh_k,
@@ -905,6 +997,9 @@ void test_high_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
 
     time_sums[i] = online_time;
     comm_sums[i] = total_com;
+
+    recv.clear();
+    sender.clear();
   }
 
   if (METRIC == 0) {
@@ -933,7 +1028,7 @@ void test_high_dimension(const u64 DELTA, const u64 METRIC, const u64 logr,
 
   double avg_com = accumulate(comm_sums.begin(), comm_sums.end(), 0.0) / trait;
 
-  cout << std::format("平均: 在线时间: {} ms , 通信:  {} MB, 通过数: {} / {}",
+  cout << std::format("平均: 在线时间: {} ms , 通信:  {} MB, 通过数: {}/{} ",
                       avg_online_time, avg_com, pass_count, trait)
        << endl;
 

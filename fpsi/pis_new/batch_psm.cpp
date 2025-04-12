@@ -1,7 +1,7 @@
 #include <array>
 #include <vector>
 
-#include <coproto/Socket/LocalAsyncSock.h>
+#include <coproto/Socket/Socket.h>
 #include <cryptoTools/Common/BitVector.h>
 #include <cryptoTools/Common/Defines.h>
 #include <cryptoTools/Common/block.h>
@@ -16,7 +16,7 @@
 #include "pis_new/triple.h"
 
 coproto::task<BitVector> Batch_PSM_recv(vector<u64> &eles, const u64 batch_size,
-                                        coproto::LocalAsyncSocket &socket) {
+                                        coproto::Socket &socket) {
   u64 bit_length = 64;
   auto input_bits = toBitVector(eles, bit_length);
   u64 batch_num = eles.size() / batch_size;
@@ -40,7 +40,7 @@ coproto::task<BitVector> Batch_PSM_recv(vector<u64> &eles, const u64 batch_size,
 }
 
 coproto::task<BitVector> Batch_PSM_send(vector<u64> &datas, u64 batch_size,
-                                        coproto::LocalAsyncSocket &socket) {
+                                        coproto::Socket &socket) {
   u64 bit_length = 64;
   u64 batch_num = datas.size();
   u64 num_triples = batch_num * batch_size * bit_length;
