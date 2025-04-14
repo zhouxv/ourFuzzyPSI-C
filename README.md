@@ -8,7 +8,7 @@ This code and following instructions are tested on Ubuntu 20.04, with `g++ 13.1.
 ```bash
 ##############################
 
-sudo apt-get install libgmp-dev libspdlog-dev libtool nasm libssl-dev libmpfr-dev
+sudo apt-get install libgmp-dev libspdlog-dev libtool nasm libssl-dev libmpfr-dev libfmt-dev
 
 ##############################
 # install libOTe
@@ -66,4 +66,16 @@ make -j
 
 # high dimension L_2
 ./main -p 2 -d 5 -m 2 -r 4 -s 4 -delta 16 -i 4
+```
+
+#### Docker notes
+need `tcconfig`, `iperf`
+```bash
+docker run  --privileged -dit ourfpsi:v0.0.1
+tcset lo --rate 10Gbps --overwrite
+tcset lo --rate 1Gbps --overwrite
+tcset lo --rate 100Mbps --overwrite
+tcset lo --rate 10Mbps --overwrite
+tcshow lo
+tcdel lo -a
 ```
