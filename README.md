@@ -73,9 +73,8 @@ need `tcconfig`, `iperf`
 ```bash
 docker run  --privileged -dit ourfpsi:v0.0.1
 tcset lo --rate 10Gbps --overwrite
-tcset lo --rate 1Gbps --overwrite
-tcset lo --rate 100Mbps --overwrite
-tcset lo --rate 10Mbps --overwrite
+tcset lo --rate 1Gbps --delay 5ms --overwrite
+tcset lo --rate 100Mbps --delay 20ms --overwrite
 tcshow lo
 tcdel lo -a
 ```
