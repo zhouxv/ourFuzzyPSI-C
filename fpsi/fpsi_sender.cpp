@@ -1,5 +1,3 @@
-
-
 #include <cmath>
 #include <format>
 #include <ipcl/plaintext.hpp>
