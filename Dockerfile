@@ -6,7 +6,6 @@ WORKDIR /home
 RUN apt-get update && \
     apt-get install -y \
     git \
-    curl \
     python3 \
     python3-pip \
     cmake \
@@ -17,6 +16,7 @@ RUN apt-get update && \
     libssl-dev \
     libmpfr-dev \
     iproute2 \
+    net-tools \
     software-properties-common && \
     # install tcconfig for network interface configuration
     pip install tcconfig
@@ -31,16 +31,23 @@ RUN add-apt-repository ppa:ubuntu-toolchain-r/test -y && \
     update-alternatives --set g++ /usr/bin/g++-13
 
 
-# Copying necessary files into the container
+
+# Install thirdparty dependencies
+COPY ./shell_install_all_dependencies.sh \
+    ./shell_build_cmd.sh \
+    ./shell_utils.sh \
+    ./
+COPY ./thirdparty/boost_1_86_0.tar.bz2 ./thirdparty/
+
+
+RUN chmod +x ./*.sh && \
+    ./shell_install_all_dependencies.sh
+
+# Copying sourcode files
 COPY ./fpsi/ ./fpsi/
 COPY ./frontend/ ./frontend/
 COPY CMakeLists.txt \
     README.md \
-    install_all_dependencies.sh \
     ./
 
-COPY ./thirdparty/boost_1_86_0.tar.bz2 ./thirdparty/
 
-
-RUN chmod +x ./install_all_dependencies.sh && \
-    ./install_all_dependencies.sh

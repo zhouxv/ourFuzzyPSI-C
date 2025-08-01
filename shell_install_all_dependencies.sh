@@ -1,8 +1,8 @@
 #! /bin/bash
+set -e
+source ./shell_utils.sh
 
 # This script installs all necessary dependencies for the project.
-
-set -e
 
 install_libOTe(){
     rm -rf libOTe
@@ -62,12 +62,13 @@ install_blake3(){
     rm -rf BLAKE3
 }
 
+log "Installing all third party dependencies..."
 mkdir -p thirdparty && cd thirdparty
 
-install_libOTe
-install_pailliercryptolib
-install_blake3
+docker_build_style "Installing libOTe" "install_libOTe"
+docker_build_style "Installing pailliercryptolib" "install_pailliercryptolib"
+docker_build_style "Installing blake3" "install_blake3"
 
 rm -rf thirdparty
 
-printf "################## All dependencies installed successfully! ###################\n\n"
+log "All dependencies installed successfully!"
