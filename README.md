@@ -1,14 +1,14 @@
 
 ## Environment
 
-This code and following instructions are tested on Ubuntu 20.04, with `g++ 13.1.0, CMake 3.30.5, GNU Make 4.2.1`.
+This code and following instructions are tested on Ubuntu 22.04, with `g++ 13.1.0, CMake 3.22.1, GNU Make 4.3`.
 
 ### Install dependencies and build
 
 ```bash
 ##############################
 
-sudo apt-get install libgmp-dev libspdlog-dev libtool nasm libssl-dev libmpfr-dev libfmt-dev
+sudo apt-get install git python3 cmake jq libgmp-dev libspdlog-dev libtool nasm libssl-dev libmpfr-dev libfmt-dev
 
 ##############################
 # install libOTe
