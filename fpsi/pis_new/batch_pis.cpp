@@ -1,7 +1,7 @@
 #include <array>
 #include <vector>
 
-#include <coproto/Socket/LocalAsyncSock.h>
+#include <coproto/Socket/Socket.h>
 #include <cryptoTools/Common/BitVector.h>
 #include <cryptoTools/Common/Defines.h>
 #include <cryptoTools/Common/block.h>
@@ -17,8 +17,7 @@
 
 coproto::task<BatchPisRecvResult>
 Batch_PIS_recv(vector<u64> &eles, const u64 batch_size,
-               const vector<vector<u64>> &indexs,
-               coproto::LocalAsyncSocket &socket) {
+               const vector<vector<u64>> &indexs, coproto::Socket &socket) {
   /*
   PIS step 1
   */
@@ -81,8 +80,7 @@ Batch_PIS_recv(vector<u64> &eles, const u64 batch_size,
 
 coproto::task<BatchPisSenderResult>
 Batch_PIS_send(vector<u64> &datas, u64 batch_size,
-               const vector<vector<u64>> &indexs,
-               coproto::LocalAsyncSocket &socket) {
+               const vector<vector<u64>> &indexs, coproto::Socket &socket) {
   /*
   PIS step 1
   */
@@ -167,8 +165,7 @@ Batch_PIS_send(vector<u64> &datas, u64 batch_size,
   co_return result;
 }
 
-vector<block> PIS_recv_KKRT_batch(BitVector &s0,
-                                  coproto::LocalAsyncSocket &socket) {
+vector<block> PIS_recv_KKRT_batch(BitVector &s0, coproto::Socket &socket) {
   u64 numOTs = s0.size();
   PRNG prng(oc::sysRandomSeed());
 
@@ -205,7 +202,7 @@ vector<block> PIS_recv_KKRT_batch(BitVector &s0,
 }
 
 void PIS_sender_KKRT_batch(vector<array<block, 2>> &pis_msg,
-                           coproto::LocalAsyncSocket &socket) {
+                           coproto::Socket &socket) {
   const u64 numOTs = pis_msg.size();
   PRNG prng(oc::sysRandomSeed());
 

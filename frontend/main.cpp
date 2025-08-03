@@ -8,15 +8,29 @@
 #include <ipcl/ipcl.hpp>
 
 #include "fpsi_protocol.h"
-#include "test_all.h"
 
 using namespace osuCrypto;
+
+void usage() {
+  std::cout << "\nUsage: ./fpsi -p <protocol_type> [options]\n"
+            << "Available protocols:\n"
+            << "  1: Low Dimension Protocol\n"
+            << "  2: High Dimension Protocol\n"
+            << "  3: Test Low Dimension Protocol\n"
+            << "  4: Test High Dimension Protocol\n"
+            << "Options:\n"
+            << "  -log <level> : Set log level (0: off, 1: info, 2: debug)\n";
+}
+
 int main(int argc, char **argv) {
   CLP cmd;
   cmd.parse(argc, argv);
 
   // 设置日志
   auto log_level = cmd.getOr<u64>("log", 1);
+
+  // spdlog::set_pattern("[%l] %v");
+  spdlog::set_pattern("%v");
   switch (log_level) {
   case 0:
     spdlog::set_level(spdlog::level::off);
@@ -27,68 +41,33 @@ int main(int argc, char **argv) {
   case 2:
     spdlog::set_level(spdlog::level::debug);
     break;
+  case 3:
+    spdlog::set_level(spdlog::level::debug);
+    break;
+  default:
+    spdlog::set_level(spdlog::level::info);
   }
-
-  spdlog::set_pattern("[%l] %v");
 
   // 选择执行协议
-  if (cmd.isSet("p")) {
-    const u64 protocol_type = cmd.getOr("p", 0);
+  const u64 protocol_type = cmd.getOr("p", 0);
 
-    switch (protocol_type) {
-    case 1:
-      run_low_dimension(cmd);
-      break;
-    case 2:
-      run_high_dimension(cmd);
-      break;
-    case 3:
-      test_low_dimension(cmd);
-      break;
-    case 4:
-      test_high_dimension(cmd);
-      break;
-    default:
-      throw std::runtime_error("unknown protocol");
-    }
-    return 0;
+  switch (protocol_type) {
+  case 1:
+    run_low_dimension(cmd);
+    break;
+  case 2:
+    run_high_dimension(cmd);
+    break;
+  case 3:
+    test_low_dimension(cmd);
+    break;
+  case 4:
+    test_high_dimension(cmd);
+    break;
+  default:
+    spdlog::error("Unknown protocol type", protocol_type);
+    usage();
   }
 
-  if (cmd.isSet("t")) {
-    const u64 protocol_type = cmd.getOr("t", 0);
-
-    switch (protocol_type) {
-    case 1:
-      test_decompose_correction(cmd);
-      break;
-    case 2:
-      test_all_psi_params(cmd);
-      break;
-    case 3:
-      test_if_match_params(cmd);
-      break;
-    case 4:
-      test_paillier();
-      break;
-    case 5:
-      test_bitset();
-      break;
-    case 6:
-      test_u64_random_he(cmd);
-      break;
-    case 7:
-      test_low_bound(cmd);
-      break;
-    case 8:
-      test_batch_pis(cmd);
-      break;
-    case 9:
-      test_paillier_neg();
-      break;
-    default:
-      throw std::runtime_error("unknown protocol");
-    }
-
-    return 0;
-  }
+  return 0;
 }

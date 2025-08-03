@@ -1,8 +1,8 @@
 #pragma once
+#include <coproto/Socket/Socket.h>
 #include <ipcl/plaintext.hpp>
 #include <vector>
 
-#include <coproto/Socket/LocalAsyncSock.h>
 #include <cryptoTools/Common/block.h>
 #include <ipcl/bignum.h>
 #include <ipcl/ciphertext.hpp>
@@ -10,10 +10,11 @@
 #include <ipcl/pri_key.hpp>
 
 #include "config.h"
+#include "fpsi_base.h"
 #include "utils/params_selects.h"
 #include "utils/util.h"
 
-class FPSISenderH {
+class FPSISenderH : public FPSIBase {
 public:
   // 协议的一些参数
   const u64 DIM;        // 维度
@@ -27,7 +28,6 @@ public:
   const ipcl::PublicKey pk;
   // const ipcl::PrivateKey sk;
   const DH25519_number dh_sk;
-  vector<coproto::LocalAsyncSocket> &sockets;
 
   // 计算的一些参数
   PrefixParam OMEGA_PARAM;
@@ -63,15 +63,15 @@ public:
       socket.mImpl->mBytesSent = 0;
     }
     commus.clear();
-    senderTimer.clear();
+    fpsi_timer.clear();
   }
 
   FPSISenderH(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
               vector<pt> &pts, ipcl::PublicKey &pk, DH25519_number &dh_sk,
-              vector<coproto::LocalAsyncSocket> &sockets)
+              vector<coproto::Socket> &sockets)
       : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
         THREAD_NUM(thread_num), pts(pts), pk(pk), dh_sk(dh_sk),
-        sockets(sockets) {
+        FPSIBase(sockets) {
     // 参数初始化
     OMEGA_PARAM = get_omega_params(metric, delta, dim);
     if (metric != 0)
@@ -85,10 +85,10 @@ public:
   FPSISenderH(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
               vector<pt> &pts, ipcl::PublicKey pk, DH25519_number dh_sk,
               const PrefixParam &param, const PrefixParam &fm_param,
-              vector<coproto::LocalAsyncSocket> &sockets)
+              vector<coproto::Socket> &sockets)
       : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
         THREAD_NUM(thread_num), pts(pts), pk(pk), dh_sk(dh_sk),
-        OMEGA_PARAM(param), FUZZY_MAPPING_PARAM(fm_param), sockets(sockets) {
+        OMEGA_PARAM(param), FUZZY_MAPPING_PARAM(fm_param), FPSIBase(sockets) {
     if (metric != 0)
       IF_MATCH_PARAM = get_if_match_params(metric, delta);
     SIDE_LEN = 2 * delta;
@@ -109,25 +109,4 @@ public:
   // fuzzy mapping
   void fuzzy_mapping_offline();
   void fuzzy_mapping_online();
-
-  // 计时器
-  simpleTimer senderTimer;
-
-  void print_time() { senderTimer.print(); }
-
-  void merge_timer(simpleTimer &other) { senderTimer.merge(other); }
-
-  // 通信计数
-  std::vector<std::pair<string, double>> commus;
-  void print_commus() {
-    for (auto &x : commus) {
-      spdlog::info("{}: {} MB", x.first, x.second);
-    }
-  }
-
-  void insert_commus(const string &msg, u64 socket_index) {
-    commus.push_back(
-        {msg, sockets[socket_index].bytesSent() / 1024.0 / 1024.0});
-    sockets[socket_index].mImpl->mBytesSent = 0;
-  }
 };
