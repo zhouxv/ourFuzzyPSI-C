@@ -34,20 +34,28 @@ RUN add-apt-repository ppa:ubuntu-toolchain-r/test -y && \
 
 # Install thirdparty dependencies
 COPY ./shell_install_all_dependencies.sh \
-    ./shell_build_cmd.sh \
     ./shell_utils.sh \
     ./
+
 COPY ./thirdparty/boost_1_86_0.tar.bz2 ./thirdparty/
 
 
 RUN chmod +x ./*.sh && \
     ./shell_install_all_dependencies.sh
 
+
+COPY ./shell_build_cmd.sh \
+    ./shell_run_bench.sh \
+    ./CMakeLists.txt \
+    ./README.md \
+    ./
+
+
 # Copying sourcode files
 COPY ./fpsi/ ./fpsi/
 COPY ./frontend/ ./frontend/
-COPY CMakeLists.txt \
-    README.md \
-    ./
+
+RUN chmod +x ./*.sh && \
+    ./shell_build_cmd.sh
 
 
