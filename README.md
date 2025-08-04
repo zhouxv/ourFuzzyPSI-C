@@ -28,13 +28,19 @@ ourFuzzyPSI-C/
 
 ## Build and Run
 
+### Prerequisites
+
+- **Compatibility Confirmed**: *Ubuntu 20.04+* operating systems meet all project runtime specifications.
+
+- **Hardware Requirements**:
+Our project utilizes [pailliercryptolib](https://github.com/intel/pailliercryptolib.git) for homomorphic encryption. `Pailliercryptolib` is to be used on `AVX512IFMA` enabled systems, as listed below in Intel CPU codenames: *Intel Cannon Lake
+,Intel Ice Lake, Intel Sapphire Rapids*. But for better performance, it is recommended to use the library on Intel Xeon® scalable processors - Ice Lake-SP or Sapphire Rapids-SP Xeon CPUs while fully utilizing the features.
+
+- `GCC 13` is required to ensure full *C++20* support. Please verify your `GCC` version.
+
 ### Local Build and Run
 
-#### Step 1: Prerequisites and Dependencies
-
-**Compatibility Confirmed**: *Ubuntu 20.04+* operating systems meet all project runtime specifications.
-
-`GCC 13` is required to ensure full *C++20* support. Please verify your `GCC` version.
+#### Step 1: Dependencies
 
 Must have dependencies include:
 
@@ -106,7 +112,7 @@ tcdel lo -a                                      # Remove all traffic control ru
 
 ## Usage Guide for `./build/main`
 
-This section describes the usage of the executable file located at `/build/main`.
+This section describes the usage of the executable file located at `./build/main`.
 
 #### Command Flags
 
