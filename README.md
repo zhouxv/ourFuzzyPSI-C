@@ -57,7 +57,7 @@ There are mandatory dependencies on [libOTe](https://github.com/osu-crypto/libOT
 
 Run the `shell_install_all_dependencies.sh` script for automated dependency compilation and installation.
 
-To accelerate the build process, please ensure [boost_1_86_0.tar.bz2](https://archives.boost.io/release/1.86.0/source/boost_1_86_0.tar.bz2) exists in the `./thirdparty` directory. If not, the stripts will occur errors.
+<!-- To accelerate the build process, please ensure [boost_1_86_0.tar.bz2](https://archives.boost.io/release/1.86.0/source/boost_1_86_0.tar.bz2) exists in the `./thirdparty` directory. If not, the stripts will occur errors. -->
 
 #### Step 3: Build the Executable File
 
@@ -83,6 +83,12 @@ docker build -t fpsi_artifact .
 
 # run the docker container with the necessary capabilities
 docker run -it --cap-add=NET_ADMIN --rm fpsi_artifact bash
+
+# installs all necessary dependencies for the project
+./shell_install_all_dependencies.sh
+
+# build executable file
+./shell_build_cmd.sh
 
 # in container workdir, run benchmarks stript
 ./shell_run_bench.sh
