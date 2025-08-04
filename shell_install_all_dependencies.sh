@@ -65,9 +65,9 @@ install_blake3(){
 log "Installing all third party dependencies..."
 mkdir -p thirdparty && cd thirdparty
 
-docker_build_style "Installing libOTe" "install_libOTe"
-docker_build_style "Installing pailliercryptolib" "install_pailliercryptolib"
-docker_build_style "Installing blake3" "install_blake3"
+install_libOTe
+install_pailliercryptolib
+install_blake3
 
 rm -rf thirdparty
 
