@@ -53,7 +53,7 @@ struct RBOKVSParam {
   u64 numCols() const { return static_cast<u64>(mScaler * mNumRows); }
 };
 
-// value 为 block 的 okvs
+// okvs with value as block
 class RBOKVS {
 public:
   // number of elements(rows)
@@ -116,7 +116,7 @@ public:
               block *output, u64 numThreads);
 };
 
-// value 为 Rist25519_number 的 okvs
+// okvs with value as Rist25519_number
 class RBOKVS_rist {
 public:
   // number of elements(rows)
@@ -197,11 +197,11 @@ void print_row_of_matrix_rist(MatrixRow_rist &a, u64 band_width);
 
 void print_grid(const std::vector<u64> &grid);
 
-// 辅助 PAILLIER OKVS的工具函数, 只适用于 inf
+// helper functions for PAILLIER OKVS, only for inf
 std::vector<block> bignumer_to_block_vector(const BigNumber &bn);
 BigNumber block_vector_to_bignumer(const std::vector<block> &ct);
 
-// 辅助 PAILLIER OKVS的工具函数, 适用于 Lp
+// helper functions for PAILLIER OKVS, only for Lp
 std::vector<block> bignumers_to_block_vector(const std::vector<BigNumber> &bn);
 std::vector<BigNumber>
 block_vector_to_bignumers(const std::vector<block> &ct, const u64 &value_size,

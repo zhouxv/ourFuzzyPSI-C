@@ -24,14 +24,15 @@
 #include "utils/util.h"
 
 void FPSIRecvH::get_ID() {
-  vector<vector<pair<u64, u64>>> intervals(DIM); // 区间
+  vector<vector<pair<u64, u64>>> intervals(DIM); // intervals
 
   ipcl::initializeContext("QAT");
   ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
-  // 计算零密文
+
+  // compute zero ciphertexts
   vector<u32> zero_vec(PTS_NUM * DIM, 0);
 
-  // 计算随机数
+  // computes random numbers
   vector<u64> random_values(PTS_NUM * DIM, 0);
   vector<BigNumber> random_bns(PTS_NUM * DIM, 0);
 
@@ -48,40 +49,39 @@ void FPSIRecvH::get_ID() {
   ipcl::CipherText random_ciphers = pk.encrypt(pt_randoms);
   ipcl::terminateContext();
 
-  spdlog::debug("recv getID() 随机数准备完成");
+  spdlog::debug("recv getID() random numbers computed");
 
-  // 合并区间
+  // Merge overlapping intervals
   for (u64 dim_index = 0; dim_index < DIM; dim_index++) {
     vector<pair<u64, u64>> interval;
     interval.reserve(PTS_NUM);
 
-    // 生成区间 [a_i - radius, a_i + radius]
+    // get interval [a_i - radius, a_i + radius]
     for (const auto &pt : pts) {
       interval.push_back({pt[dim_index] - DELTA, pt[dim_index] + DELTA});
     }
 
-    // 按左端点排序，若相同按右端点排序
+    // Sort points by x-coordinate; if equal, sort by y-coordinate
     std::sort(interval.begin(), interval.end());
 
-    // 合并区间
     for (auto [start, end] : interval) {
+      // If intervals overlap, merge them
+      // If no overlap, add the new interval
       if (!intervals[dim_index].empty() &&
           start <= intervals[dim_index].back().second) {
-        // 有交集，合并
         intervals[dim_index].back().second =
             max(intervals[dim_index].back().second, end);
       } else {
-        // 没有交集，加入新区间
         intervals[dim_index].emplace_back(start, end);
       }
     }
   }
 
-  spdlog::debug("recv getID() 合并区间完成");
+  spdlog::debug("recv getID() interval merge finished");
 
-  // 获取 idx
+  // get idxs
   auto compare_lambda = [](const pair<u64, u64> &a, u64 value) {
-    return a.second < value; // 寻找第一个second<=value的区间
+    return a.second < value; // Find the first interval where second <= value
   };
 
   IDs.resize(PTS_NUM, 0);
@@ -103,7 +103,7 @@ void FPSIRecvH::get_ID() {
     pt_index += 1;
   }
 
-  spdlog::debug("recv getID() idx获取完成");
+  spdlog::debug("recv getID() idx computation completed");
 
   // get list encoding
   u64 okvs_mN = PTS_NUM * FUZZY_MAPPING_PARAM.second;
@@ -140,7 +140,7 @@ void FPSIRecvH::get_ID() {
     rb_okvs.encode(keys, values, value_block_length,
                    get_id_encodings[dim_index]);
   }
-  spdlog::debug("recv getID() 计算完成");
+  spdlog::debug("recv getID() computation completed");
 }
 
 void FPSIRecvH::fuzzy_mapping_offline() { get_ID(); }
@@ -149,7 +149,7 @@ void FPSIRecvH::fuzzy_mapping_online() {
   simpleTimer fm_timer;
 
   /*--------------------------------------------------------------------------------------------------------------------------------*/
-  // 发送 get id encodings
+  // send getID encodings
   /*--------------------------------------------------------------------------------------------------------------------------------*/
   auto get_id_mN = PTS_NUM * FUZZY_MAPPING_PARAM.second;
   auto get_id_mSize = get_id_encodings[0].size();
@@ -167,7 +167,7 @@ void FPSIRecvH::fuzzy_mapping_online() {
   coproto::sync_wait(sockets[0].flush());
 
   /*--------------------------------------------------------------------------------------------------------------------------------*/
-  // 接收 密文
+  // recv fmap ciphertexts
   /*--------------------------------------------------------------------------------------------------------------------------------*/
 
   u64 ciphers_size = 0;
@@ -188,10 +188,10 @@ void FPSIRecvH::fuzzy_mapping_online() {
     v_[i] = block_vector_to_bignumer(tmp2);
   }
 
-  spdlog::info("recv fm ciphers 接收完成");
+  spdlog::info("Recv fm ciphertexts received");
 
   /*--------------------------------------------------------------------------------------------------------------------------------*/
-  // 解密 并准备 PIS
+  // decrypt, and get ready for PIS
   /*--------------------------------------------------------------------------------------------------------------------------------*/
 
   fm_timer.start();
@@ -212,7 +212,7 @@ void FPSIRecvH::fuzzy_mapping_online() {
                 ciphers_size, dec_vec_num, every_size);
 
   fm_timer.start();
-  // 计算 PIS step 2 的数组索引
+  // compute the array index for PIS step 2
   auto indexs = compute_split_index(every_size);
   auto r = Batch_PIS_recv(v_dec_u64, every_size, indexs, sockets[0]);
   auto rr = sync_wait(r);
@@ -222,7 +222,7 @@ void FPSIRecvH::fuzzy_mapping_online() {
   auto h = PIS_recv_KKRT_batch(rr.s0, sockets[0]);
   fm_timer.end("recv_fm_PIS_ot");
 
-  // 计算 pis 结果
+  // compute the result of PIS protocol
   vector<u64> pis_res(dec_vec_num, 0);
   auto s = rr.s;
   u64 psm_num = log2(every_size);
@@ -252,24 +252,24 @@ void FPSIRecvH::fuzzy_mapping_online() {
 /// offline
 void FPSIRecvH::init() { (METRIC == 0) ? init_inf() : init_lp(); }
 
-/// offline 高维 无穷范数, 多线程 OKVS
+/// offline high dim L_inf, multi-thread OKVS
 void FPSIRecvH::init_inf() {
-  // fm 离线阶段
+  // fmap offline phase
   fuzzy_mapping_offline();
 
-  spdlog::info("recv fm 离线阶段完成");
+  spdlog::info("Recv fmap offline phase finished");
 
   auto omega = OMEGA_PARAM.second;
 
   rb_okvs_vec.resize(OKVS_COUNT);
-  // notes: rbOKVS 没有拷贝函数
+  // notes: rbOKVS has no clone function
   for (u64 i = 0; i < OKVS_COUNT; i++) {
     rb_okvs_vec[i].init(OKVS_SIZE, OKVS_EPSILON, OKVS_LAMBDA, OKVS_SEED);
   }
 
   spdlog::debug("rb_okvs_vec init done");
 
-  // 零同态密文初始化
+  // zero homo ciphertexts init
   ipcl::initializeContext("QAT");
   ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
 
@@ -292,20 +292,20 @@ void FPSIRecvH::init_inf() {
       }
     }
   }
-  spdlog::debug("recv 0 密文初始化完成");
+  spdlog::debug("zero homo ciphertexts precomputation finished");
 
   ipcl::terminateContext();
 }
 
-/// offline 高维 Lp 范数, 多线程 OKVS
+/// offline high-dim Lp, multi-thread OKVS
 void FPSIRecvH::init_lp() {
   auto omega = OMEGA_PARAM.second;
 
-  // fm 离线阶段
+  // fmap offline phase
   fuzzy_mapping_offline();
-  spdlog::info("recv fm 离线阶段完成");
+  spdlog::info("Recv fmap offline phase finished");
 
-  // OKVS 初始化
+  // OKVS init
   rb_okvs_vec.resize(OKVS_COUNT);
 
   for (u64 i = 0; i < OKVS_COUNT; i++) {
@@ -314,8 +314,8 @@ void FPSIRecvH::init_lp() {
 
   spdlog::debug("recv okvs init done");
 
-  // 同态密文初始化
-  // 计算 0 到 DELTA^p 的同态密文
+  // Homomorphic ciphertext initialization
+  // Compute homomorphic ciphertexts for values from 0 to DELTA^p
   ipcl::initializeContext("QAT");
   ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
 
@@ -346,10 +346,10 @@ void FPSIRecvH::init_lp() {
   ipcl::terminateContext();
 }
 
-// online 阶段
+// online phase
 void FPSIRecvH::msg() { (METRIC == 0) ? msg_inf() : msg_lp(); }
 
-/// online 高维 无穷范数, 多线程 OKVS
+/// online high dim L_inf, multi-thread OKVS
 void FPSIRecvH::msg_inf() {
   simpleTimer inf_timer;
 
@@ -357,7 +357,7 @@ void FPSIRecvH::msg_inf() {
   fuzzy_mapping_online();
   inf_timer.end("fm_online");
 
-  spdlog::info("recv fm 在线阶段结束");
+  spdlog::info("Recv fm online phase finished");
 
   /*--------------------------------------------------------------------------------------------------------------------------------*/
   // getList inf and encode
@@ -393,7 +393,7 @@ void FPSIRecvH::msg_inf() {
       }
     }
 
-    // padding keys 到 pt_num *  param.second
+    // padding keys to the count of pt_num *  param.second
     padding_keys(keys, okvs_mSize);
 
     get_list_inf_timer.end(std::format("recv_{}_get_list", thread_index));
@@ -410,22 +410,22 @@ void FPSIRecvH::msg_inf() {
   vector<thread> get_list_threads;
 
   inf_timer.start();
-  // 启动 getList 线程
+  // start getList threads
   for (u64 t = 0; t < OKVS_COUNT; t++) {
     get_list_threads.emplace_back(get_list_inf, t);
   }
 
-  // 等待 getList 执行完毕
+  // wait for getList threads
   for (auto &th : get_list_threads) {
     th.join();
   }
   inf_timer.end("recv_getLists_encoding_total");
-  spdlog::info("recv getList and okvs encoding 完成");
+  spdlog::info("Recv getList and okvs encoding done");
 
   /*--------------------------------------------------------------------------------------------------------------------------------*/
-  // okvs encoding 和 hashes 的通信
+  // send okvs encodings and hash values
   /*--------------------------------------------------------------------------------------------------------------------------------*/
-  // 发送 encoding
+  // send encodings
   coproto::sync_wait(sockets[0].flush());
   coproto::sync_wait(sockets[0].send(OKVS_COUNT));
   coproto::sync_wait(sockets[0].send(okvs_mN));
@@ -440,15 +440,15 @@ void FPSIRecvH::msg_inf() {
   }
   inf_timer.end("recv_encoding_send");
   insert_commus("recv_encoding", 0);
-  spdlog::info("recv okvs encoding 发送完成");
+  spdlog::info("Recv okvs encoding has been sent");
 
   std::atomic<u64> intersection_count(0);
 
   auto post_process = [&](u64 thread_index) {
     simpleTimer post_process_inf_timer;
 
-    // 接收 sender 的密文
-    // todo: balance情况
+    // receive ciphertexts of sender
+    // todo: balance set
     u64 pt_count;
     coproto::sync_wait(sockets[thread_index].flush());
     coproto::sync_wait(sockets[thread_index].recv(pt_count));
@@ -462,10 +462,11 @@ void FPSIRecvH::msg_inf() {
       coproto::sync_wait(sockets[thread_index].recv(cipher));
       bigNums[i] = block_vector_to_bignumer(cipher);
     }
-    spdlog::info("recv thread_index {0} : 同态密文接收完毕", thread_index);
+    spdlog::info("Recv thread_index {0} : receiveed homo ciphertexts",
+                 thread_index);
 
     /*--------------------------------------------------------------------------------------------------------------------------------*/
-    // 解密，计算交点数量
+    // Decryption, and get the number of intersection points
     /*--------------------------------------------------------------------------------------------------------------------------------*/
 
     ipcl::initializeContext("QAT");
@@ -475,7 +476,7 @@ void FPSIRecvH::msg_inf() {
     post_process_inf_timer.end(
         std::format("recv_thread_{}_decrypt", thread_index));
 
-    // 获取解密明文
+    // Obtain the decrypted plaintext
     vector<u64> plain_nums(res_size, 0);
     for (u64 i = 0; i < res_size; i++) {
       auto tmp = plainText.getElementVec(i);
@@ -490,7 +491,7 @@ void FPSIRecvH::msg_inf() {
         std::format("recv_thread_{}_batch_psm", thread_index));
     insert_commus(std::format("recv_thread_{}_batch_psm", thread_index),
                   thread_index);
-    spdlog::info("recv Batch_PSM 完成");
+    spdlog::info("Recv Batch_PSM finished");
 
     vector<u32> vec_zero_cipher(DIM, 0);
     vector<u32> vec_one_cipher(DIM, 1);
@@ -550,14 +551,14 @@ void FPSIRecvH::msg_inf() {
     merge_timer(post_process_inf_timer);
   };
 
-  // 启动 post_process 线程
+  // start post_process thread
   inf_timer.start();
   vector<thread> post_process_ths;
   for (u64 t = 0; t < THREAD_NUM; t++) {
     post_process_ths.emplace_back(post_process, t);
   }
 
-  // 等待 post_process 发送完毕
+  // wait for post_process threads
   for (auto &th : post_process_ths) {
     th.join();
   }
@@ -568,14 +569,14 @@ void FPSIRecvH::msg_inf() {
   psi_ca_result = intersection_count.load();
 }
 
-/// online 高维 Lp 范数, 多线程 OKVS
+/// online high-dim Lp, multi-thread OKVS
 void FPSIRecvH::msg_lp() {
   simpleTimer lp_timer;
 
   lp_timer.start();
   fuzzy_mapping_online();
   lp_timer.end("fm_online");
-  spdlog::info("recv fm 在线阶段结束");
+  spdlog::info("Recv fm online phase finished");
 
   /*--------------------------------------------------------------------------------------------------------------------------------*/
   // getList Lp and encode
@@ -600,10 +601,11 @@ void FPSIRecvH::msg_lp() {
     u64 sigma = thread_index % 2;
     u64 dim_index = thread_index / 2;
 
-    // 提前做条件判断，使用方法对象和lambda，减少循环中的条件判断
-    // 捕获列表 []
-    // 参数列表()
-    // 返回类型
+    // Precompute conditional checks, using method objects and lambdas
+    // to reduce condition evaluations within loops
+    // Capture list []
+    // Parameter list ()
+    // Return type ->
     auto min_lambbda =
         (sigma == 0)
             ? [](u64 coordinate, u64 delta) { return coordinate - delta; }
@@ -627,30 +629,30 @@ void FPSIRecvH::msg_lp() {
       auto decs = set_dec(min, max, OMEGA_PARAM.first);
 
       for (string &dec : decs) {
-        // 计算 key
+        // compute keys
         auto x_star = bound_func(dec);
         block tmp =
             get_key_from_dim_sigma_dec_id(dim_index, sigma, dec, IDs[i]);
         keys.push_back(tmp);
 
-        // 计算value
+        // compute values
         auto diff = (pt_dim > x_star) ? (pt_dim - x_star) : (x_star - pt_dim);
         values.push_back(lp_value_pre_ciphers[diff]);
       }
     }
 
-    // padding keys 到 pt_num * blk_cells * param.second
-    // padding values 到 pt_num * blk_cells * param.second
+    // padding keys the count of pt_num * blk_cells * param.second
+    // padding values the count of pt_num * blk_cells * param.second
     padding_keys(keys, okvs_mSize);
     padding_values(values, okvs_mSize, value_block_length);
     get_list_lp_timer.end(std::format("recv_{}_get_list", thread_index));
-    spdlog::debug(std::format("recv {} get list 完成", thread_index));
+    spdlog::debug(std::format("recv {} getlist finished", thread_index));
 
     get_list_lp_timer.start();
     rb_okvs_vec[thread_index].encode(keys, values, value_block_length,
                                      encodings[thread_index]);
     get_list_lp_timer.end(std::format("recv_{}_encode", thread_index));
-    spdlog::debug(std::format("recv {} encode 完成", thread_index));
+    spdlog::debug(std::format("recv {} getlist encode finished", thread_index));
 
     merge_timer(get_list_lp_timer);
   };
@@ -658,22 +660,22 @@ void FPSIRecvH::msg_lp() {
   vector<thread> get_list_threads;
 
   lp_timer.start();
-  // 启动 getList 线程
+  // start getList threads
   for (u64 t = 0; t < OKVS_COUNT; t++) {
     get_list_threads.emplace_back(get_list_lp, t);
   }
 
-  // 等待 getList 执行完毕
+  // wait for getList threads
   for (auto &th : get_list_threads) {
     th.join();
   }
   lp_timer.end("recv_getLists_encoding_total");
-  spdlog::info("recv getList and okvs encoding 完成");
+  spdlog::info("Recv getList and okvs encoding done");
 
   /*--------------------------------------------------------------------------------------------------------------------------------*/
-  // okvs encoding 的通信
+  // send okvs encodings
   /*--------------------------------------------------------------------------------------------------------------------------------*/
-  // 发送 encoding
+  // send encodings
   coproto::sync_wait(sockets[0].flush());
   coproto::sync_wait(sockets[0].send(OKVS_COUNT));
   coproto::sync_wait(sockets[0].send(okvs_mN));
@@ -688,13 +690,13 @@ void FPSIRecvH::msg_lp() {
   }
   lp_timer.end("recv_encoding_send");
   insert_commus("recv_encoding", 0);
-  spdlog::info("recv okvs encoding 发送完成");
+  spdlog::info("Recv okvs encoding has been sent");
 
   /*--------------------------------------------------------------------------------------------------------------------------------*/
-  // 接收sender的密文，并解密
+  // Receive ciphertext from sender and decrypt it
   /*--------------------------------------------------------------------------------------------------------------------------------*/
 
-  // notes: 多线程会出错
+  // notes: multi-thread cause errors
   u64 mu = OMEGA_PARAM.first.size();
   u64 log_max_mu = std::ceil(std::log2(mu));
   u64 padding_count = std::pow(2, log_max_mu);
@@ -707,8 +709,8 @@ void FPSIRecvH::msg_lp() {
   auto post_process_lp_dec = [&](u64 thread_index) {
     simpleTimer post_process_lp_timer;
 
-    // 接收 sender 的密文
-    // todo: balance情况
+    // Receive ciphertext from sender
+    // TODO: Handle balance case
     u64 pt_count;
     coproto::sync_wait(sockets[thread_index].flush());
     coproto::sync_wait(sockets[thread_index].recv(pt_count));
@@ -729,15 +731,16 @@ void FPSIRecvH::msg_lp() {
       coproto::sync_wait(sockets[thread_index].recv(cipher));
       v_bn[i] = block_vector_to_bignumer(cipher);
     }
-    spdlog::info("recv thread_index {0} : 同态密文 u v 接收完毕", thread_index);
+    spdlog::info("Recv thread_index {0} : received homo ciphertexts u v",
+                 thread_index);
 
     /*--------------------------------------------------------------------------------------------------------------------------------*/
-    // 解密
+    // Decrypt and get plaintexts
     /*--------------------------------------------------------------------------------------------------------------------------------*/
     ipcl::initializeContext("QAT");
     ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
     post_process_lp_timer.start();
-    // 解密
+    // Decrypt
     ipcl::PlainText u_pt = sk.decrypt(ipcl::CipherText(pk, u_bn));
 
     ipcl::PlainText v_pt = sk.decrypt(ipcl::CipherText(pk, v_bn));
@@ -746,7 +749,8 @@ void FPSIRecvH::msg_lp() {
     ipcl::terminateContext();
 
     PRNG prng(oc::sysRandomSeed());
-    // 获取明文
+
+    // Get plaintexts
     auto padding_res_size = pt_count * OKVS_COUNT * padding_count;
     vector<u64> u_plain(padding_res_size, 0);
     vector<u64> v_plain(padding_res_size, 0);
@@ -780,19 +784,19 @@ void FPSIRecvH::msg_lp() {
   };
 
   lp_timer.start();
-  // 启动 post_process 线程
+  // start post_process threads
   vector<thread> post_process_ths;
   for (u64 t = 0; t < THREAD_NUM; t++) {
     post_process_ths.emplace_back(post_process_lp_dec, t);
   }
 
-  // 等待 post_process 完毕
+  // wait for post_process threads
   for (auto &th : post_process_ths) {
     th.join();
   }
 
   lp_timer.end("recv_dec_total");
-  spdlog::info("recv dec 完成");
+  spdlog::info("Recv dec done");
 
   /*--------------------------------------------------------------------------------------------------------------------------------*/
   // step 7 PIS
@@ -801,7 +805,7 @@ void FPSIRecvH::msg_lp() {
   u64 dec_vec_num = PTS_NUM * DIM;
   u64 every_size = padding_count * 2;
 
-  // 计算 PIS step 2 的数组索引
+  // Compute array indexes for PSI protocol step 2
   auto indexs = compute_split_index(every_size);
   lp_timer.start();
   auto r = Batch_PIS_recv(v_all, every_size, indexs, sockets[0]);
@@ -812,7 +816,7 @@ void FPSIRecvH::msg_lp() {
   auto h = PIS_recv_KKRT_batch(rr.s0, sockets[0]);
   lp_timer.end("recv_lp_PIS");
 
-  // 计算 pis 结果
+  // Compute PIS results
   vector<u64> pis_res(dec_vec_num, 0);
   auto s = rr.s;
   u64 psm_num = log2(every_size);
@@ -838,7 +842,7 @@ void FPSIRecvH::msg_lp() {
 
   u64 sums_count = sums.size();
   u64 prefixs_num = IF_MATCH_PARAM.first.size();
-  // 提前分配空间
+  // Pre-allocate space
   vector<vector<block>> recv_sums_prefixs(
       sums_count, vector<block>(prefixs_num, ZeroBlock));
   vector<DH25519_point> recv_sums_prefixs_dh;
@@ -861,13 +865,13 @@ void FPSIRecvH::msg_lp() {
     }
   }
   lp_timer.end("recv_sums_prefixs_dh");
-  spdlog::info("recv: recv_sums_prefixs_dh 计算完成 ");
+  spdlog::info("Recv: recv_sums_prefixs_dh computation completed ");
 
   coproto::sync_wait(sockets[0].send(recv_sums_prefixs_dh));
   insert_commus("recv_sums_prefixs_dh", 0);
 
   spdlog::info(
-      "recv: recv_sums_prefixs_dh 发送完成; recv_sums_prefixs_dh size {}",
+      "recv: recv_sums_prefixs_dh has been sent; recv_sums_prefixs_dh size {}",
       recv_sums_prefixs_dh.size());
 
   vector<DH25519_point> sender_prefixes_dh(PTS_NUM * prefixs_num);
@@ -875,19 +879,19 @@ void FPSIRecvH::msg_lp() {
   sender_prefixes_dh_k.reserve(PTS_NUM * IF_MATCH_PARAM.second);
 
   coproto::sync_wait(sockets[0].recvResize(sender_prefixes_dh));
-  spdlog::info("recv: sender_if_match_prefixes_dh 接收完成 ");
+  spdlog::info("Recv: received sender_if_match_prefixes_dh");
 
   lp_timer.start();
   for (auto tmp : sender_prefixes_dh) {
     sender_prefixes_dh_k.insert(tmp * dh_sk);
   }
   lp_timer.end("sender_prefixes_dh_k");
-  spdlog::info("recv: sender_prefixes_dh_k 计算完成 ");
+  spdlog::info("Recv: sender_prefixes_dh_k computation completed");
 
   vector<DH25519_point> recv_sums_prefixs_dh_k(PTS_NUM * prefixs_num);
   coproto::sync_wait(sockets[0].recvResize(recv_sums_prefixs_dh_k));
 
-  spdlog::info("recv: recv_prefixs_dh_k 接收完成 ");
+  spdlog::info("Recv: received recv_prefixs_dh_k");
 
   lp_timer.start();
   bool temp;

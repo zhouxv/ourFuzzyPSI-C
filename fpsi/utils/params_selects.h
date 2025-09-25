@@ -117,7 +117,7 @@ public:
     static once_flag flag;
     static map<u64, PrefixParam> params;
 
-    // ifmatch采用未使用set_dec的参数设置
+    // ifmatch uses parameter settings from unused set_dec
     call_once(flag, []() {
       params[17] = {{0, 2}, 8};
       params[33] = {{0, 2}, 12};

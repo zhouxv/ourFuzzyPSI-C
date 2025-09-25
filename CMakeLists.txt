@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
 set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/out/install")
 
-# include_directories：用于指定头文件的搜索路径，而不是库文件的路径
+# include_directories：Used to specify the search path for header files, rather than the path for library files
 include_directories(utils)
 include_directories(fpsi)
 include_directories(frontend)
@@ -41,7 +41,7 @@ target_link_libraries(main oc::libOTe)
 # # ############################################
 # # Link  Myblake3                             #
 # # ############################################
-# # target_link_libraries：用于指定链接的库文件，但直接使用相对路径可能会导致问题
+# # target_link_libraries: Used to specify the library files to be linked. However, directly using relative paths may cause issues.
 target_link_libraries(main ${CMAKE_SOURCE_DIR}/out/install/lib/libblake3.a)
 
 # # ############################################

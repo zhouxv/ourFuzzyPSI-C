@@ -18,16 +18,7 @@ struct Triples {
   u64 curTriple = 0;
 
   bool eager = false;
-  // macoro::eager_task  任务需要 立刻启动，不想等 co_await
-  // macoro::task        co_await启动并等待
 
-  // co_await            等待异步任务，但不阻塞主线程;
-  //                     可以嵌套使用（在 task<T> 内）
-
-  // sync_wait           同步等待异步任务完成，会阻塞主线程;
-  //                     不能嵌套（只能在main或同步代码中调用）
-
-  // when_all_ready      等待多个协程完成（但不获取结果）
   macoro::eager_task<> curTask;
 
   Triples(u64 nTriples)

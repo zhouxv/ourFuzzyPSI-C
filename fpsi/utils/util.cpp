@@ -5,7 +5,6 @@
 #include "utils/params_selects.h"
 #include "utils/util.h"
 
-// 采样，并指定交点数量
 void sample_points(u64 dim, u64 delta, u64 send_size, u64 recv_size,
                    u64 intersection_size, vector<pt> &send_pts,
                    vector<pt> &recv_pts) {
@@ -39,52 +38,64 @@ void sample_points(u64 dim, u64 delta, u64 send_size, u64 recv_size,
   }
 }
 
-/// 计算点 p 在边长为 sidele 的网格中的单元格坐标。
-/// 该函数将点 p 的每个维度坐标除以边长 sidele，得到其在网格中的单元格坐标。
+/// Calculate the cell coordinates of point p in a grid with side length sidele.
+/// This function divides each coordinate of point p by sidele to get its cell
+/// coordinates in the grid.
 ///
-/// # 参数
-/// - `p`: 一个 Point 类型的引用，表示点的坐标。
-/// - `sidele`: 一个 u64 类型的值，表示网格的边长。
+/// # Parameters
+/// - `p`: A reference to a Point type, representing the coordinates of the
+/// point.
+/// - `sidele`: A value of type u64, representing the side length of the grid.
 ///
-/// # 返回
-/// 返回一个 Point 类型的值，表示点 p 在网格中的单元格坐标。
+/// # Returns
+/// Returns a Point type value, representing the cell coordinates of point p in
+/// the grid.
 pt cell(const pt &p, u64 dim, u64 side_len) {
-  pt bot_left_corner(dim, 0); // 初始化为0
+  pt bot_left_corner(dim, 0); // initialize to 0
   for (u64 i = 0; i < dim; ++i) {
-    bot_left_corner[i] = p[i] / side_len; // 计算单元格坐标
+    bot_left_corner[i] = p[i] / side_len; // compute cell coordinate
   }
-  return bot_left_corner; // 返回结果
+  return bot_left_corner;
 }
 
-/// 根据点 p、边长 sidele 和半径 radius，计算一个区域的边界块坐标。
-/// 该函数首先计算点 p 在每个维度上减去半径后的坐标，然后调用 cell
-/// 函数计算边界块的单元格坐标。
+/// Calculate the boundary cell coordinates of a region based on point p, grid
+/// side length sidele, and radius. This function first subtracts the radius
+/// from each coordinate of point p, then calls the cell function to compute the
+/// cell coordinates of the boundary block.
 ///
-/// # 参数
-/// - `p`: 一个 Point 类型的引用，表示点的坐标。
-/// - `sidele`: 一个 u64 类型的值，表示网格的边长。
-/// - `radius`: 一个 u64 类型的值，表示区域的半径。
+/// # Parameters
+/// - `p`: A reference to a Point type, representing the coordinates of the
+/// point.
+/// - `sidele`: A value of type u64, representing the side length of the grid.
+/// - `radius`: A value of type u64, representing the radius of the region.
 ///
-/// # 返回
-/// 返回一个 Point 类型的值，表示区域的边界块坐标。
+/// # Returns
+/// Returns a Point type value, representing the boundary cell coordinates of
+/// the region.
 pt block_(const pt &p, u64 dim, u64 delta, u64 sidelen) {
-  pt min(dim, 0); // 初始化为0
+  pt min(dim, 0); // initialize to 0
   for (u64 i = 0; i < dim; ++i) {
-    // 计算给定点 p 在某个维度 i 上的坐标减去一个半径值
+    // compute the coordinate of point p in a certain dimension i minus a radius
+    // value
     min[i] = p[i] - delta;
   }
-  return cell(min, dim, sidelen); // 调用 cell 函数计算边界块的单元格坐标
+  return cell(min, dim,
+              sidelen); // compute the cell coordinates of the boundary block
 }
 
-/// 计算两个点 p1 和 p2 之间的 L1 距离。
-/// 该函数计算每个维度上两个点坐标的差的绝对值之和。
+/// Calculate the L1 distance between two points p1 and p2.
+/// This function computes the sum of the absolute differences of the
+/// coordinates of the two points in each dimension.
 ///
-/// # 参数
-/// - `p1`: 一个 pt 类型的引用，表示第一个点的坐标。
-/// - `p2`: 一个 pt 类型的引用，表示第二个点的坐标。
+/// # Parameters
+/// - `p1`: A reference to a pt type, representing the coordinates of the first
+/// point.
+/// - `p2`: A reference to a pt type, representing the coordinates of the second
+/// point.
 ///
-/// # 返回
-/// 返回一个 u64 类型的值，表示两个点之间的 L1 距离。
+/// # Returns
+/// Returns a value of type u64, representing the L1 distance between the two
+/// points.
 u64 l1_dist(const pt &p1, const pt &p2, u64 dim) {
   u64 sum = 0;
   for (u64 i = 0; i < dim; ++i) {
@@ -94,16 +105,20 @@ u64 l1_dist(const pt &p1, const pt &p2, u64 dim) {
   return sum;
 }
 
-/// 计算两个点 p1 和 p2 之间的 L2 距离平方。
-/// 该函数计算每个维度上两个点坐标的差的平方和。
+/// Calculate the squared L2 distance between two points p1 and p2.
+/// This function computes the sum of the squares of the differences of the
+/// coordinates of the two points in each dimension.
 ///
-/// # 参数
-/// - `p1`: 一个 pt 类型的引用，表示第一个点的坐标。
-/// - `p2`: 一个 pt 类型的引用，表示第二个点的坐标。
-/// - `dim`: 维度大小。
+/// # Parameters
+/// - `p1`: A reference to a pt type, representing the coordinates of the first
+/// point.
+/// - `p2`: A reference to a pt type, representing the coordinates of the second
+/// point.
+/// - `dim`: The number of dimensions.
 ///
-/// # 返回
-/// 返回一个 u64 类型的值，表示两个点之间的 L2 距离的平方。
+/// # Returns
+/// Returns a value of type u64, representing the squared L2 distance between
+/// the two points.
 u64 l2_dist(const pt &p1, const pt &p2, u64 dim) {
   u64 sum = 0;
   for (u64 i = 0; i < dim; ++i) {
@@ -113,15 +128,19 @@ u64 l2_dist(const pt &p1, const pt &p2, u64 dim) {
   return sum;
 }
 
-/// 计算两个点 p1 和 p2 之间的 L∞ 距离。
-/// 该函数计算每个维度上两个点坐标的差的绝对值，然后取最大值。
+/// Calculate the L∞ distance between two points p1 and p2.
+/// This function computes the absolute difference of the coordinates of the two
+/// points in each dimension, then takes the maximum value.
 ///
-/// # 参数
-/// - `p1`: 一个 pt 类型的引用，表示第一个点的坐标。
-/// - `p2`: 一个 pt 类型的引用，表示第二个点的坐标。
+/// # Parameters
+/// - `p1`: A reference to a pt type, representing the coordinates of the first
+/// point.
+/// - `p2`: A reference to a pt type, representing the coordinates of the second
+/// point.
 ///
-/// # 返回
-/// 返回一个 u64 类型的值，表示两个点之间的 L∞ 距离。
+/// # Returns
+/// Returns a value of type u64, representing the L∞ distance between the two
+/// points.
 u64 l_inf_dist(const pt &p1, const pt &p2, u64 dim) {
   u64 max_diff = 0;
   for (u64 i = 0; i < dim; ++i) {
@@ -131,16 +150,19 @@ u64 l_inf_dist(const pt &p1, const pt &p2, u64 dim) {
   return max_diff;
 }
 
-/// 根据点 p 和源点 source，计算点 p 相对于源点 source 的位置索引。
-/// 该函数通过比较点 p 和源点 source 的每个维度坐标，确定点 p 相对于源点 source
-/// 的位置。
+/// Calculate the position index of point p relative to the source point.
+/// This function determines the position of point p relative to the source
+/// point by comparing each coordinate of p and the source point.
 ///
-/// # 参数
-/// - `cross_point`: 一个 Point 类型的引用，表示点的坐标。
-/// - `source_point`: 一个 Point 类型的引用，表示源点的坐标。
+/// # Parameters
+/// - `cross_point`: A reference to a Point type, representing the coordinates
+/// of the point.
+/// - `source_point`: A reference to a Point type, representing the coordinates
+/// of the source point.
 ///
-/// # 返回
-/// 返回一个 usize 类型的值，表示点 p 相对于源点 source 的位置索引。
+/// # Returns
+/// Returns a value of type usize, representing the position index of point p
+/// relative to the source point.
 u64 get_position(const pt &cross_point, const pt &source_point, u64 dim) {
   u64 pos = 0;
   for (u64 i = 0; i < dim; ++i) {
@@ -151,34 +173,39 @@ u64 get_position(const pt &cross_point, const pt &source_point, u64 dim) {
   return pos;
 }
 
-/// 根据点 p 和度量 metric，计算点 p 的交叉区域。
-/// 该函数首先计算点 p 所在的块，然后根据度量 metric 计算交叉区域的边界。
-/// 对于 L1 和 L2 度量，函数会计算交叉区域的边界块，并将它们添加到结果向量中。
+/// Calculate the intersection region of point p based on the metric.
+/// This function first computes the block where point p is located, then
+/// calculates the boundary of the intersection region according to the metric.
+/// For L1 and L2 metrics, the function computes the boundary blocks of the
+/// intersection region and adds them to the result vector.
 ///
-/// # 参数
-/// - `p`: 一个 Point 类型的引用，表示点的坐标。
-/// - `metric`: 一个 usize 类型的值，表示度量类型（1 表示 L1，2 表示 L2）。
+/// # Parameters
+/// - `p`: A reference to a Point type, representing the coordinates of the
+/// point.
+/// - `metric`: A value of type usize, representing the metric type (1 for L1, 2
+/// for L2).
 ///
-/// # 返回
-/// 返回一个 Point 类型的向量，包含交叉区域的边界块坐标。
+/// # Returns
+/// Returns a vector of Point type, containing the boundary block coordinates of
+/// the intersection region.
 vector<pt> intersection(const pt &p, u64 metric, u64 dim, u64 delta,
                         u64 sidelen, u64 blk_cells, u64 delta_l2) {
-  // 初始化结果向量
+  // initial result vector
   vector<pt> results;
   results.reserve(blk_cells);
 
-  // 计算给定点 p 所在块的左下角坐标
+  // compute the bottom-left corner coordinates of the block where point p is
+  // located
   pt blk = block_(p, dim, delta, sidelen);
-  // 初始化交叉点
   pt cross_point(dim, 0);
 
-  // 计算交叉点的坐标, 交叉点是 2 * delta 的单元格的右上角的点
+  // compute the coordinates of the cross point, which is the top-right
   for (u64 i = 0; i < dim; ++i) {
     cross_point[i] = blk[i] * sidelen + sidelen;
   }
 
   u64 dist;
-  // 根据度量计算距离
+  // compute the distance based on the metric
   if (metric == 2) {
     dist = l2_dist(p, cross_point, dim);
   } else if (metric == 1) {
@@ -189,51 +216,54 @@ vector<pt> intersection(const pt &p, u64 metric, u64 dim, u64 delta,
     throw invalid_argument("Invalid metric value.");
   }
 
-  // 获取交叉点相对于源点 p 的位置索引
+  // get the position index of the cross point relative to the source point p
   u64 pos_ind = get_position(cross_point, p, dim);
 
-  // 遍历所有的边界块
+  // traverse all boundary blocks
   for (u64 i = 0; i < blk_cells; ++i) {
     pt temp(dim, 0);
-    // 根据度量选择半径
+    // determine the r_lp based on the metric
     u64 r_lp = (metric == 2) ? delta_l2 : delta;
 
-    // 如果距离大于半径且当前块是交叉点的位置，则跳过
+    // if the distance is greater than the radius and the current block is the
+    // position of the cross point, skip it
     if (dist > r_lp && i == pos_ind) {
       continue;
     }
 
-    // 计算当前块的坐标
+    // compute the coordinates of the current block
     for (u64 j = 0; j < dim; ++j) {
       if ((i >> j) & 1) {
-        // &1 是获取最低位
+        // (i >> j) & 1 is used to get the j-th bit of i
         temp[j] = blk[j] + 1;
       } else {
         temp[j] = blk[j];
       }
     }
-    // 将当前块的坐标添加到结果中
+    // add the coordinates of the current block to the results
     results.push_back(temp);
   }
 
   return results;
 }
 
-/// 计算组合数
+/// Calculate the combination number
 ///
-/// 计算从 `n` 个元素中选择 `k` 个元素的组合数。
+/// Calculate the number of combinations for choosing `k` elements from `n`
+/// elements.
 ///
-/// # 参数
-/// - `n`: 总元素数量
-/// - `k`: 选择的元素数量
+/// # Parameters
+/// - `n`: Total number of elements
+/// - `k`: Number of elements to choose
 ///
-/// # 返回
-/// 返回 `u64` 类型的组合数。如果 `k` 大于 `n`，则返回 0。
+/// # Returns
+/// Returns a value of type `u64` representing the number of combinations.
+/// Returns 0 if `k` is greater than `n`.
 u64 combination(u64 n, u64 k) {
   if (k > n)
     return 0;
   if (k > n - k)
-    k = n - k; // C(n, k) == C(n, n-k)，减少计算量
+    k = n - k; // C(n, k) == C(n, n-k), do less computation
   u64 result = 1;
   for (u64 i = 0; i < k; ++i) {
     result = result * (n - i) / (i + 1);
@@ -241,7 +271,7 @@ u64 combination(u64 n, u64 k) {
   return result;
 }
 
-// 快速幂
+// fast exponentiation
 u64 fast_pow(u64 base, u64 exp) {
   u64 result = 1;
   while (exp > 0) {
@@ -252,23 +282,6 @@ u64 fast_pow(u64 base, u64 exp) {
   }
   return result;
 }
-
-/// 该函数接收一个包含若干点的向量，并通过指定的半径来生成相应的区间，之后合并所有重叠的区间。
-///
-/// # 参数
-/// - `points`: 一个包含若干 u64 类型点的向量。
-/// - `radius`: 一个 u64 类型的值，表示区间的半径。
-///
-/// # 返回
-/// 返回一个包含合并后区间的向量，每个区间由一个元组 `(start, end)` 表示。
-///
-/// # 示例
-/// ```
-/// let points = vec![1, 3, 5, 7];
-/// let radius = 1;
-/// let merged = merge_intervals(points, radius);
-/// assert_eq!(merged, vec![(0, 2), (3, 5), (6, 8)]);
-/// ```
 
 const PrefixParam get_omega_params(u64 metric, u64 delta, u64 dim) {
   if (metric < 0 || metric > 2) {
@@ -362,7 +375,8 @@ bignumers_to_block_vector(const std::vector<BigNumber> &bns) {
         cipher_block.push_back(prng.get<block>());
       }
     } else {
-      // notes: 小端序 Little-endian BLock构造, 如果是大端, 需要修改
+      // NOTES: Little-endian block construction, if it's big-endian, need to
+      // modify
       for (auto i = 0; i < PAILLIER_CIPHER_SIZE_IN_BLOCK; i++) {
         cipher_block.push_back(
             block(((u64(ct[4 * i + 3])) << 32) + (u64(ct[4 * i + 2])),
@@ -375,7 +389,7 @@ bignumers_to_block_vector(const std::vector<BigNumber> &bns) {
   return cipher_block;
 }
 
-// 用于乘法
+// used for homo mul
 std::vector<BigNumber>
 block_vector_to_bignumers(const std::vector<block> &ct, const u64 &value_size,
                           std::shared_ptr<BigNumber> nsq) {
@@ -400,7 +414,7 @@ block_vector_to_bignumers(const std::vector<block> &ct, const u64 &value_size,
   return bns;
 }
 
-// 加法就可以
+// used for homo add
 std::vector<BigNumber> block_vector_to_bignumers(const std::vector<block> &ct,
                                                  const u64 &value_size) {
   vector<BigNumber> bns;

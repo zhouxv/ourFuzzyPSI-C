@@ -7,8 +7,8 @@
 using namespace oc;
 
 enum class Role {
-  Recv,  // 接收方
-  Sender // 发送方
+  Recv,  // receiver
+  Sender // sender
 };
 
 void run_low_dimension(const oc::CLP &cmd);

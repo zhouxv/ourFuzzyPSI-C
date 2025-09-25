@@ -18,8 +18,7 @@ coproto::task<> triple0(coproto::Socket &chl, BitVector &a0, BitVector &b0,
   SilentOtExtSender silentSender;
   SilentOtExtReceiver silentReceiver;
 
-  // 虚拟通道
-  // 共享 chl
+  // virtual channels, share chl
   auto sendChl = chl.fork();
   auto recvChl = chl.fork();
 

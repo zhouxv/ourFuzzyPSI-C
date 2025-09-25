@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
   CLP cmd;
   cmd.parse(argc, argv);
 
-  // 设置日志
+  //  Set up logs
   auto log_level = cmd.getOr<u64>("log", 1);
 
   // spdlog::set_pattern("[%l] %v");
@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
     spdlog::set_level(spdlog::level::info);
   }
 
-  // 选择执行协议
+  // Select the executed protocol
   const u64 protocol_type = cmd.getOr("p", 0);
 
   switch (protocol_type) {
