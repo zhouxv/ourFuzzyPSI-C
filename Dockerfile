@@ -30,14 +30,12 @@ RUN add-apt-repository ppa:ubuntu-toolchain-r/test -y && \
     update-alternatives --set gcc /usr/bin/gcc-13 && \
     update-alternatives --set g++ /usr/bin/g++-13
 
-
-
 # Install thirdparty dependencies
 COPY ./shell_install_all_dependencies.sh \
     ./shell_utils.sh \
     ./
 
-COPY ./thirdparty/boost_1_86_0.tar.bz2 ./thirdparty/
+# COPY ./thirdparty/boost_1_86_0.tar.bz2 ./thirdparty/
 
 
 RUN chmod +x ./*.sh && \
@@ -47,7 +45,6 @@ RUN chmod +x ./*.sh && \
 COPY ./shell_build_cmd.sh \
     ./shell_run_bench.sh \
     ./CMakeLists.txt \
-    ./README.md \
     ./
 
 
@@ -57,5 +54,7 @@ COPY ./frontend/ ./frontend/
 
 RUN chmod +x ./*.sh && \
     ./shell_build_cmd.sh
+
+COPY ./README.md ./
 
 
