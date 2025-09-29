@@ -34,7 +34,7 @@ install_pailliercryptolib(){
     
     printf "################## Building paillier           ###################\n\n"
     export IPCL_ROOT=$(pwd)
-    cmake -S . -B build -DCMAKE_INSTALL_PREFIX=../../out/install/ -DCMAKE_BUILD_TYPE=Release -DIPCL_TEST=OFF -DIPCL_BENCHMARK=OFF
+    cmake -S . -B build -DCMAKE_INSTALL_PREFIX=../../out/install/ -DCMAKE_BUILD_TYPE=Release -DIPCL_TEST=OFF -DIPCL_BENCHMARK=OFF -DIPCL_DISABLE_AVX512IFMA=ON
     cmake --build build -j
 
     printf "################## Installing paillier         ###################\n\n"
