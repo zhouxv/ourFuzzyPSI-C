@@ -46,6 +46,8 @@ ourFuzzyPSI-C/
 
 **Memory :** `100GB or above recommended`. Peak memory usage during image build ranges from 66GB to 80GB, which can cause out-of-memory issues on machines with less than 64 GB RAM. Please ensure sufficient memory is available before proceeding.
 
+**Docker Version :** `Docker 28.3.3+`  (Earlier versions have not been validated).
+
 **Compiler :** `GCC 13` is required to ensure full *C++20* support. Please verify your `GCC` version.
 
 **Dependencies :** Must have dependencies include:
