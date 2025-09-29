@@ -41,8 +41,7 @@ ourFuzzyPSI-C/
 
 **Supported OS :** `Ubuntu 20.04+` meet all project runtime specifications.
 
-**CPU :** Our project utilizes [pailliercryptolib](https://github.com/intel/pailliercryptolib.git) for homomorphic encryption. `Pailliercryptolib` is to be used on `AVX512IFMA` enabled systems, as listed below in Intel CPU codenames: *Intel Cannon Lake
-,Intel Ice Lake, Intel Sapphire Rapids*. But for better performance, it is recommended to use the library on Intel Xeon® scalable processors - Ice Lake-SP or Sapphire Rapids-SP Xeon CPUs while fully utilizing the features.
+**CPU :** Our project utilizes [pailliercryptolib](https://github.com/intel/pailliercryptolib.git) for homomorphic encryption. `Pailliercryptolib` is to be used on `AVX512IFMA` enabled systems, as listed below in Intel CPU codenames: *Intel Cannon Lake, Intel Ice Lake, Intel Sapphire Rapids*. But for better performance, it is recommended to use the library on Intel Xeon® scalable processors - Ice Lake-SP or Sapphire Rapids-SP Xeon CPUs while fully utilizing the features.
 
 **Memory :** `100GB or above recommended`. Peak memory usage during image build ranges from 66GB to 80GB, which can cause out-of-memory issues on machines with less than 64 GB RAM. Please ensure sufficient memory is available before proceeding.
 
