@@ -8,15 +8,19 @@
 
 const u64 NUM_BITS = 64;
 
-// 只在本文件使用的一些方法
+// Some methods used only in this file
 namespace {
 
-/* 将u64转换为二进制字符串，前面补零，长度为bits */
+/*
+Convert u64 to a binary string with leading zeros, length is bits
+*/
 string to_binary_string(u64 value, u64 bits) {
   return bitset<NUM_BITS>(value).to_string().substr(0, bits);
 }
 
-/* 获取字符串前n位字符 */
+/*
+Get the first n characters of a string
+*/
 string get_first_n_chars(const string &s, u64 n) {
   if (n > s.size()) {
     throw out_of_range("get_first_n_chars: n > s.size()");
@@ -24,15 +28,19 @@ string get_first_n_chars(const string &s, u64 n) {
   return s.substr(0, n);
 }
 
-/* 获取字符串第n位字符，索引从 0 开始 */
+/*
+ Get the character at index n of a string (0-based)
+*/
 string get_char_at_index(const string &s, u64 index) {
   if (index < s.size()) {
     return string(1, s[index]);
   }
-  return ""; // 若索引超出范围，返回空字符串
+  return ""; // if index is out of range, return empty string
 }
 
-/* 获取两个字符串相同的位数 */
+/*
+Get the number of common prefix bits between two strings
+*/
 u64 common_prefix_length(const string &s1, const string &s2) {
   u64 length = 0;
   u64 min_length = min(s1.size(), s2.size());
@@ -48,34 +56,34 @@ u64 common_prefix_length(const string &s1, const string &s2) {
   return length;
 }
 
-// `set_round` 方法：查找 `u_set` 中小于 `dec` 的最大值
+// Find the largest value in `u_set` that is less than `dec`
 u64 set_round(u64 dec, const set<u64> &u_set) {
   if (u_set.empty()) {
     throw runtime_error("set_round panic! The set is empty.");
   }
 
-  auto it = u_set.lower_bound(dec); // 找到第一个 >= dec 的元素
+  auto it = u_set.lower_bound(dec); // find the first element not less than dec
 
   if (it == u_set.begin()) {
-    return 0; // 没有比 dec 小的元素，返回 0 或其他适当值
+    // No element is less than dec, return 0 or other appropriate value
+    return 0;
   }
 
-  --it; // 退回到小于 dec 的最大值
+  --it; // Move to the largest element less than dec
   return *it;
 }
 
-// Trie 结构体定义
+// Trie structure definition
 struct TrieNode {
-  unique_ptr<TrieNode> children[2]; // 左右子节点
-  string value;                     // 叶子节点存储的值
+  unique_ptr<TrieNode> children[2]; // left and right children
+  string value;                     // leaf node value
 
-  // 构造函数
   TrieNode(string val = "") : value(std::move(val)) {}
 
-  // 初始化默认构造树
+  // Initialize the tree with default bit length
   u64 initialize_default(u64 x, u64 y) { return initialize(x, y, NUM_BITS); }
 
-  // 根据区间 [x, y] 构造二进制 Trie 树
+  // Construct a binary Trie tree based on the interval [x, y]
   u64 initialize(u64 x, u64 y, u64 bits) {
     if (x > y) {
       cerr << "Error: x must be less than or equal to y" << endl;
@@ -100,7 +108,7 @@ struct TrieNode {
     return tree_levels;
   }
 
-  // 填充 Trie 树使其成为完全二叉树
+  // Fill the Trie tree to make it a complete binary tree
   void fill_tree(u64 height, u64 level) {
     if (level < height) {
       children[0] = make_unique<TrieNode>("0");
@@ -111,7 +119,7 @@ struct TrieNode {
     }
   }
 
-  // 根据区间边界剪裁 Trie 树
+  // Tailor the Trie tree based on the interval boundaries
   void tail_tree(const string &left, const string &right, u64 height, u64 level,
                  u64 index) {
     tail_tree_left(left, height, level, index);
@@ -152,7 +160,7 @@ struct TrieNode {
     }
   }
 
-  // 获取所有最大封闭子树
+  // Get all maximal enclosing complete subtries
   vector<string> get_maximal_enclosing_complete_subtries(u64 tree_levels) {
     vector<string> subtries;
     collect_maximal_subtries(subtries, tree_levels, 0, value);
@@ -187,7 +195,7 @@ struct TrieNode {
     return left_complete && right_complete;
   }
 
-  // 打印 Trie 树
+  // Print the Trie tree
   void print_tree(u64 depth = 0) {
     cout << string(depth * 2, ' ') << "Value: " << value << endl;
     for (const auto &child : children) {
@@ -199,28 +207,29 @@ struct TrieNode {
 };
 } // namespace
 
-/// 低位填充 1
+/// Pad with 1s at the lower bits
 u64 up_bound(const string &prefix) {
   string temp_str = prefix;
-  temp_str.append(NUM_BITS - prefix.length(), '1'); // 补全高位为 1
+  temp_str.append(NUM_BITS - prefix.length(), '1');
   return bitset<NUM_BITS>(temp_str).to_ullong();
 }
 
-/// 低位填充 0
+/// Pad with 0s at the lower bits
 u64 low_bound(const string &prefix) {
   string temp_str = prefix;
-  temp_str.append(NUM_BITS - prefix.length(), '0'); // 补全低位为 0
+  temp_str.append(NUM_BITS - prefix.length(), '0');
   return bitset<NUM_BITS>(temp_str).to_ullong();
 }
 
-// 关键函数：分解区间 [x, y] 并返回所有最大封闭子树
+// decompose the interval [x, y] and return all maximal enclosing complete
+// subtries
 vector<string> decompose(u64 x, u64 y) {
   TrieNode root;
   u64 tree_levels = root.initialize_default(x, y);
   return root.get_maximal_enclosing_complete_subtries(tree_levels);
 }
 
-// 不适用前缀树，使用附录中的方法
+// Decompose the interval [min, max] using an improved method in appendix
 vector<string> decompose_improve(u64 min, u64 max) {
   if (min > max) {
     throw runtime_error("decompose improve: max should >= min");
@@ -230,12 +239,12 @@ vector<string> decompose_improve(u64 min, u64 max) {
     return {to_binary_string(min, NUM_BITS)};
   }
 
-  u64 t = max - min + 1;                      // 区间长度
-  u64 w = static_cast<u64>(std::log2(t)) + 1; // 计算 w
+  u64 t = max - min + 1; // intervals length
+  u64 w = static_cast<u64>(std::log2(t)) + 1;
   u64 a_prime = min;
 
   // step 1
-  // 找到满足 2^{w-1} | a_prime 的 a_prime
+  // find a_prime >= a, s.t. 2^(w-1) | a_prime
   while (a_prime <= max && (a_prime & ((1 << (w - 1)) - 1))) {
     a_prime++;
   }
@@ -246,25 +255,27 @@ vector<string> decompose_improve(u64 min, u64 max) {
 
   // step 2
   // x = a+t-a'; y=a'-a
-  u64 x = max - a_prime + 1; // 右侧长度
-  u64 y = a_prime - min;     // 左侧长度
+  u64 x = max - a_prime + 1; // right side length
+  u64 y = a_prime - min;     // left side length
 
-  // 转化为二进制表示, bitset的访问是从低位开始访问
+  // convert to binary representation, bitset access is from low bit to high bit
   std::bitset<NUM_BITS> x_binary(x);
   std::bitset<NUM_BITS> y_binary(y);
 
-  std::vector<std::string> P; // 结果集合
-  u64 x_prime = a_prime;      // 向右走
-  u64 y_prime = a_prime - 1;  // 向左走
+  std::vector<std::string> P; // result set
+  u64 x_prime = a_prime;      // move right
+  u64 y_prime = a_prime - 1;  // move left
 
-  // 从高位到低位遍历
+  // traverse from high bit to low bit
   for (u64 i = w; i >= 1; i--) {
     auto bits = NUM_BITS - i + 1;
-    if (x_binary[i - 1]) { // 如果 x 的第 i 位为 1
+    if (x_binary[i - 1]) {
+      // if x's i-th bit is 1
       P.push_back(to_binary_string(x_prime, bits));
       x_prime += (1 << (i - 1));
     }
-    if (y_binary[i - 1]) { // 如果 y 的第 i 位为 1
+    if (y_binary[i - 1]) {
+      // if y's i-th bit is 1
       P.push_back(to_binary_string(y_prime, bits));
       y_prime -= (1 << (i - 1));
     }
@@ -273,7 +284,8 @@ vector<string> decompose_improve(u64 min, u64 max) {
   return P;
 }
 
-// set_dec 函数
+// set_dec function
+// Decompose the interval [x, y] and adjust according to the set u
 vector<string> set_dec(u64 x, u64 y, const set<u64> &u) {
   vector<string> decs = decompose_improve(x, y);
   vector<string> res_decs;
@@ -307,7 +319,8 @@ vector<string> set_dec(u64 x, u64 y, const set<u64> &u) {
   return res_decs;
 }
 
-// 计算前缀集合
+// compute the prefix set
+// for a given value, compute the prefixes based on the set u
 vector<string> set_prefix(u64 value, const set<u64> &u_set) {
   string value_str = to_binary_string(value, NUM_BITS);
   vector<string> prefixes;
@@ -319,8 +332,6 @@ vector<string> set_prefix(u64 value, const set<u64> &u_set) {
   return prefixes;
 }
 
-// 计算前缀集合
-// [0,u]的所有前缀
 vector<string> prefix(u64 value, u64 u) {
   string value_str = to_binary_string(value, NUM_BITS);
   vector<string> prefixes;

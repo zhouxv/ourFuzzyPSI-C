@@ -69,7 +69,7 @@ Batch_PIS_recv(vector<u64> &eles, const u64 batch_size,
 
   /*
   PIS step 3
-  批量处理
+  batch process
   */
   BatchPisRecvResult result;
   result.s0 = std::move(s0);
@@ -145,7 +145,7 @@ Batch_PIS_send(vector<u64> &datas, u64 batch_size,
 
   /*
   PIS step 3
-  批量处理
+  batch process
   */
   PRNG prng(oc::sysRandomSeed());
   vector<array<block, 2>> pis_msg(batch_num);
@@ -236,8 +236,8 @@ void PIS_sender_KKRT_batch(vector<array<block, 2>> &pis_msg,
   coproto::sync_wait(socket.send(half_sendMsg_1));
 }
 
-// 默认eles的size为2^⌈log 𝜇⌉− 1
-// 计算拆分vector的索引, 重复利用
+// suppose eles_size is 2^⌈log 𝜇⌉− 1
+// compute the split index of vector, reuse
 vector<vector<u64>> compute_split_index(const u64 eles_size) {
   u64 vector_num = log2(eles_size);
 
@@ -249,7 +249,7 @@ vector<vector<u64>> compute_split_index(const u64 eles_size) {
   }
 
   for (u64 i = 0; i < eles_size; i++) {
-    // 检查索引 i 在二进制表示的 k-th 位是否为 1
+    // check whether the k-th bit of index i in binary representation is 1
     for (u64 j = 0; j < vector_num; j++) {
       if ((i & mask[j]) != 0) {
         res[j].push_back(i);
@@ -260,8 +260,8 @@ vector<vector<u64>> compute_split_index(const u64 eles_size) {
   return res;
 }
 
-// 默认eles的size为2^⌈log 𝜇⌉− 1
-// 计算拆分vector的索引, 重复利用
+// suppose eles_size is 2^⌈log 𝜇⌉− 1
+// compute the split index of vector, reuse
 vector<vector<u64>> split_vertor(vector<u64> &eles,
                                  const vector<vector<u64>> &eles_index) {
   vector<vector<u64>> res(eles_index.size());

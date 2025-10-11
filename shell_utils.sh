@@ -20,25 +20,25 @@ docker_build_style() {
     local logfile=$(mktemp)
 
     printf "${BOLD} ${header}${RESET}\n" >&2
-
-    # 执行并捕获输出
+    
+    # Execute and get the output
     eval "$command" 2>&1 | tee "$logfile" | {
         while read -r line; do
             if [ ${#line} -gt $max_len ]; then
                 line="${line:0:max_len}…"
             fi
-            printf "\r\033[K   │ %s" "$line" >&2  # 实时显示
+            printf "\r\033[K   │ %s" "$line" >&2  # Real-time Display
         done
     }
 
-    status=${PIPESTATUS[0]}  # 获取 eval 的退出状态
+    status=${PIPESTATUS[0]}  # Obtain the exit status of evals
 
     if [ $status -eq 0 ]; then
         printf "\r\033[K   └─ ${GREEN}✓ Success${RESET}\n" >&2
     else
         printf "\r\033[K   └─ ${RED}✗ Failed${RESET}\n" >&2
         echo "   └─ Full log:" >&2
-        cat "$logfile" | sed 's/^/      /' >&2  # 错误时展开日志
+        cat "$logfile" | sed 's/^/      /' >&2  # Display logs when error occurs
         rm "$logfile"
         exit 1
     fi

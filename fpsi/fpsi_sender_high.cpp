@@ -43,13 +43,13 @@ void FPSISenderH::fuzzy_mapping_offline() {
   fm_masks_1_ciphers = pk.encrypt(ipcl::PlainText(masks_1_values));
   ipcl::terminateContext();
 
-  spdlog::debug("sender mask 密文计算完成");
+  spdlog::debug("sender mask ciphertexts computation completed");
 };
 
 void FPSISenderH::fuzzy_mapping_online() {
   simpleTimer fm_timer;
   /*--------------------------------------------------------------------------------------------------------------------------------*/
-  // 接收 get_id_encodings
+  // receive get_id_encodings
   /*--------------------------------------------------------------------------------------------------------------------------------*/
   u64 get_id_mN = 0, get_id_mSize = 0;
   u64 get_id_value_block_length = PAILLIER_CIPHER_SIZE_IN_BLOCK * 2;
@@ -67,10 +67,10 @@ void FPSISenderH::fuzzy_mapping_online() {
     }
   }
 
-  spdlog::info("sender get id okvs encoding 接收完成");
+  spdlog::info("Sender received get_id_encodings");
 
   /*--------------------------------------------------------------------------------------------------------------------------------*/
-  // fuzzy mapping step 3 处理 mask
+  // fuzzy mapping step 3: handle mask
   /*--------------------------------------------------------------------------------------------------------------------------------*/
 
   RBOKVS rbokvs;
@@ -122,13 +122,13 @@ void FPSISenderH::fuzzy_mapping_online() {
     }
   }
   fm_timer.end("sender_fm_decompose");
-  spdlog::info("sender fuzzy mapping decompose ok");
+  spdlog::info("Sender fuzzy mapping decompose ok");
 
   fm_timer.start();
   auto u_ = ipcl::CipherText(pk, u) + ipcl::CipherText(pk, mask0);
   auto v_ = ipcl::CipherText(pk, v) + ipcl::CipherText(pk, mask1);
   fm_timer.end("sender_fm_encrypt");
-  spdlog::info("sender fuzzy mapping encrypt ok");
+  spdlog::info("Sender fuzzy mapping encrypt ok");
 
   coproto::sync_wait(sockets[0].send(u_.getSize()));
   coproto::sync_wait(sockets[0].send(padding_count));
@@ -137,11 +137,11 @@ void FPSISenderH::fuzzy_mapping_online() {
     coproto::sync_wait(sockets[0].send(bignumer_to_block_vector(v_[i])));
   }
   coproto::sync_wait(sockets[0].flush());
-  spdlog::info("sender fuzzy mapping 发送密文完成");
+  spdlog::info("Sender Fmap ciphertext has been send");
   insert_commus("sender_fm_ciphers", 0);
 
   /*--------------------------------------------------------------------------------------------------------------------------------*/
-  // PIS 协议
+  // PIS protocol
   /*--------------------------------------------------------------------------------------------------------------------------------*/
 
   fm_timer.start();
@@ -171,20 +171,20 @@ void FPSISenderH::fuzzy_mapping_online() {
   merge_timer(fm_timer);
 };
 
-/// 离线阶段
+/// offline phase
 void FPSISenderH::init() { (METRIC == 0) ? init_inf() : init_lp(); }
 
-/// 离线阶段 高维无穷范数
+/// offline phase, high-dim, L_inf
 void FPSISenderH::init_inf() {
   fuzzy_mapping_offline();
-  spdlog::info("sender fm 离线阶段完成");
+  spdlog::info("Sender fmap offline phase done");
 
   ipcl::initializeContext("QAT");
   ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
 
   PRNG prng((block(oc::sysRandomSeed())));
 
-  // 计算随机数
+  // computes random numbers
   random_values.resize(PTS_NUM * DIM);
   vector<BigNumber> random_bns(PTS_NUM * DIM, 0);
 
@@ -196,19 +196,19 @@ void FPSISenderH::init_inf() {
   randoms_pts = ipcl::PlainText(random_bns);
   random_ciphers = pk.encrypt(randoms_pts);
 
-  spdlog::info("sender 计算随机数完成");
+  spdlog::info("Sender finished computing random numbers");
 
   ipcl::terminateContext();
 }
 
-/// 离线阶段 高维Lp范数
+/// offline phase, high-dim, Lp
 void FPSISenderH::init_lp() {
   fuzzy_mapping_offline();
-  spdlog::info("sender fm 离线阶段完成");
+  spdlog::info("Sender fm offline phase done");
 
   PRNG prng((block(oc::sysRandomSeed())));
 
-  // 计算随机数和随机数和
+  // computes random numbers and the sum of random numbers
   random_values.resize(PTS_NUM * DIM);
   random_sums.assign(PTS_NUM, 0);
   vector<BigNumber> random_bns(PTS_NUM * DIM, 0);
@@ -230,13 +230,14 @@ void FPSISenderH::init_lp() {
   randoms_pts = ipcl::PlainText(random_bns);
   random_ciphers = pk.encrypt(randoms_pts);
 
-  spdlog::info("sender 计算随机数及密文完成");
+  spdlog::info("Sender completed random number and ciphertext computation");
 
-  // 预计算一些同态密文, 这里注意, 与recv不同的是, 计算的会更多,
-  // 与prefix最大的涵盖范围有关
-  // vector<u64> num_vec;
+  // Precompute homomorphic ciphertexts. Note: sender computes more than
+  // receiver determined by the maximum prefix coverage range. vector<u64>
+  // num_vec;
   vector<BigNumber> ep_bns;
-  // 找最大值
+
+  // find the max value
   auto max_v = *OMEGA_PARAM.first.rbegin();
   max_v = fast_pow(2, max_v);
 
@@ -251,14 +252,14 @@ void FPSISenderH::init_lp() {
   ipcl::PlainText plain = ipcl::PlainText(ep_bns);
   lp_pre_ciphers = pk.encrypt(plain);
 
-  spdlog::info("sender 计算 diff(e^p)密文完成");
+  spdlog::info("Sender completed the computation of diff(e^p) ciphertext");
 
   // if match DH pre
   vector<vector<block>> sender_random_prefixes;
   sender_random_prefixes.reserve(PTS_NUM);
 
   u64 max_prefix_num(0);
-  // 计算前缀
+  // compute prefixs
   for (auto sum : random_sums) {
     auto temp_prefixes = get_keys_from_dec(
         set_dec(sum, sum + (u64)pow(DELTA, METRIC), IF_MATCH_PARAM.first));
@@ -268,7 +269,7 @@ void FPSISenderH::init_lp() {
     }
   }
 
-  // dh计算
+  // compute dh pre
   sender_random_prefixes_dh.reserve(PTS_NUM * max_prefix_num);
 
   for (auto prefixs : sender_random_prefixes) {
@@ -281,25 +282,25 @@ void FPSISenderH::init_lp() {
     }
   }
 
-  spdlog::info("sender if match 预计算完成");
+  spdlog::info("Sender if match pre-computation completed");
 
   ipcl::terminateContext();
 }
 
-/// 在线阶段
+/// online phase
 void FPSISenderH::msg() { (METRIC == 0) ? msg_inf() : msg_lp(); }
 
-/// 在线阶段 高维无穷范数
+/// online phase, high-dim, L_inf
 void FPSISenderH::msg_inf() {
   simpleTimer inf_timer;
 
   inf_timer.start();
   fuzzy_mapping_online();
   inf_timer.end("sender_fm_online");
-  spdlog::info("sender fm online 完成");
+  spdlog::info("Sender fm online finished");
 
   /*--------------------------------------------------------------------------------------------------------------------------------*/
-  // OKVS Encoding 的接收
+  // receive OKVS encodings
   /*--------------------------------------------------------------------------------------------------------------------------------*/
   u64 okvs_count;
   u64 mN;
@@ -322,7 +323,7 @@ void FPSISenderH::msg_inf() {
     }
   }
 
-  spdlog::info("sender okvs encoding 接收完成");
+  spdlog::info("Sender OKVS encodings received.");
 
   /*--------------------------------------------------------------------------------------------------------------------------------*/
   // get value inf —— decode and add random
@@ -369,7 +370,8 @@ void FPSISenderH::msg_inf() {
       }
     }
     get_value_timer_inf.end(std::format("send_{}_okvs_decode", thread_index));
-    spdlog::info("sender thread_index {} : okvs 解码完成", thread_index);
+    spdlog::info("Sender thread_index {} : okvs decode coppleted",
+                 thread_index);
 
     /*--------------------------------------------------------------------------------------------------------------------------------*/
     // getValue inf
@@ -381,7 +383,7 @@ void FPSISenderH::msg_inf() {
     auto results = ipcl::CipherText(pk, decode_ciphers) +
                    ipcl::CipherText(pk, random_ciphers_copy);
     get_value_timer_inf.end(std::format("send_{}_get_value", thread_index));
-    spdlog::info("sender thread_index {} : 加密完成", thread_index);
+    spdlog::info("Sender thread_index {} : encryption completed", thread_index);
 
     coproto::sync_wait(sockets[thread_index].flush());
     for (u64 i = 0; i < pts_count * DIM * mu; i++) {
@@ -389,7 +391,8 @@ void FPSISenderH::msg_inf() {
           bignumer_to_block_vector(results.getElement(i))));
     }
     insert_commus(std::format("sender_{}_ciphers", thread_index), thread_index);
-    spdlog::info("sender thread_index {} : 密文发送完成", thread_index);
+    spdlog::info("Sender thread_index {} : Ciphertext has been sent",
+                 thread_index);
 
     get_value_timer_inf.start();
     auto s = Batch_PSM_send(random_values, OMEGA_PARAM.first.size(),
@@ -399,7 +402,7 @@ void FPSISenderH::msg_inf() {
     insert_commus(std::format("sender_{}_batch_psm", thread_index),
                   thread_index);
 
-    // 准备0 1密文
+    // Prepare 0 1 ciphertext
     vector<u32> vec_zero_cipher(DIM, 0);
     ipcl::PlainText pt_zero = ipcl::PlainText(vec_zero_cipher);
     ipcl::CipherText ct_zero = pk.encrypt(pt_zero);
@@ -419,7 +422,7 @@ void FPSISenderH::msg_inf() {
       }
     }
 
-    // 接收 PSM 密文
+    // Receive PSM ciphertext
     vector<BigNumber> recv_psm_ciphers(psm_num);
 
     coproto::sync_wait(sockets[thread_index].flush());
@@ -430,7 +433,7 @@ void FPSISenderH::msg_inf() {
         recv_psm_ciphers[j * PTS_NUM + i] = block_vector_to_bignumer(tmp);
       }
     }
-    spdlog::info("sender thread_index {} : recv_psm_ciphers 接收完成",
+    spdlog::info("Sender thread_index {} : received recv_psm_ciphers",
                  thread_index);
 
     inf_timer.start();
@@ -450,7 +453,7 @@ void FPSISenderH::msg_inf() {
     }
 
     inf_timer.end("sender_psm_add_mul");
-    spdlog::info("sender_psm_add_mul 完成");
+    spdlog::info("Sender_psm_add_mul done");
 
     coproto::sync_wait(sockets[thread_index].flush());
     for (u64 i = 0; i < PTS_NUM; i++) {
@@ -464,28 +467,28 @@ void FPSISenderH::msg_inf() {
     ipcl::terminateContext();
   };
 
-  // 启动线程
+  // start threads
   for (u64 t = 0; t < THREAD_NUM; t++) {
     get_value_inf_ths.emplace_back(get_value_inf, t);
   }
 
-  // 等待所有线程完成
+  // Wait for all threads to complete
   for (auto &th : get_value_inf_ths) {
     th.join();
   }
 }
 
-/// 在线阶段 高维Lp范数
+/// online phase, high-dim, Lp
 void FPSISenderH::msg_lp() {
   simpleTimer lp_timer;
 
   lp_timer.start();
   fuzzy_mapping_online();
   lp_timer.end("sender_fm_online");
-  spdlog::info("sender fm online 完成");
+  spdlog::info("Sender fm online phase done");
 
   /*--------------------------------------------------------------------------------------------------------------------------------*/
-  // OKVS Encoding 的接收
+  // receive OKVS encodings
   /*--------------------------------------------------------------------------------------------------------------------------------*/
   u64 okvs_count;
   u64 mN;
@@ -508,7 +511,7 @@ void FPSISenderH::msg_lp() {
     }
   }
 
-  spdlog::info("sender okvs encoding 接收完成");
+  spdlog::info("Sender OKVS encodings received.");
 
   /*
   get value '
@@ -530,29 +533,27 @@ void FPSISenderH::msg_lp() {
 
     u64 pts_count = std::max(pts_batch_size, pt_end - pt_start);
 
-    // 发送当前线程处理的点的数量
+    // Send the number of points currently processed by the current thread
     coproto::sync_wait(sockets[thread_index].flush());
     coproto::sync_wait(sockets[thread_index].send(pts_count));
 
-    // 存储解码结果以及getValue所需的各种的密文
+    // Store the decoding results and the ciphertexts required for the getValue
+    // operation
     vector<vector<BigNumber>> decode_ciphers(METRIC);
-    // a_i
-    vector<BigNumber> random_ciphers_copy;
-    // e^p
-    vector<BigNumber> ep_ciphers_copy;
-    // (p t)*e^(p-t)
-    vector<vector<u32>> combination_pt(METRIC);
+    vector<BigNumber> random_ciphers_copy;      // a_i
+    vector<BigNumber> ep_ciphers_copy;          // e^p
+    vector<vector<u32>> combination_pt(METRIC); // (p t)*e^(p-t)
 
     random_ciphers_copy.reserve(pts_count * okvs_count * mu);
     ep_ciphers_copy.reserve(pts_count * okvs_count * mu);
 
-    // get_value_' 使用
+    // ready for get_value_'
     vector<BigNumber> s_random_copy;
     vector<BigNumber> s_zero;
     s_random_copy.reserve(pts_count * okvs_count * mu);
     s_zero.reserve(pts_count * okvs_count * mu);
 
-    // 提前计算一些组合数
+    // copute combinations in advance
     vector<u32> combinations;
     for (u32 i = 0; i < METRIC; i++) {
       combinations.push_back(combination(METRIC, i + 1));
@@ -602,7 +603,8 @@ void FPSISenderH::msg_lp() {
     }
     get_value_lp_timer.end(
         std::format("send_{}_okvs_decode_and_value_prepair", thread_index));
-    spdlog::info("sender thread_index {} : okvs 解码完成", thread_index);
+    spdlog::info("Sender thread_index {} : okvs decode coppleted",
+                 thread_index);
 
     /*--------------------------------------------------------------------------------------------------------------------------------*/
     // getValue Lp '
@@ -625,8 +627,9 @@ void FPSISenderH::msg_lp() {
         ipcl::CipherText(pk, s_zero) + ipcl::CipherText(pk, s_random_copy);
 
     get_value_lp_timer.end(std::format("sender_{}_get_value", thread_index));
-    spdlog::info("sender thread_index {} : getValue 密文计算完成",
-                 thread_index);
+    spdlog::info(
+        "Sender thread_index {} : getValue ciphers computation completed",
+        thread_index);
 
     coproto::sync_wait(sockets[thread_index].flush());
     for (u64 i = 0; i < pts_count * okvs_count * mu; i++) {
@@ -641,7 +644,7 @@ void FPSISenderH::msg_lp() {
     }
     insert_commus(std::format("sender_{}_get_value_s", thread_index),
                   thread_index);
-    spdlog::info("sender thread_index {} : get_value 密文发送完成",
+    spdlog::info("Sender thread_index {} : get_value Ciphertext has been sent",
                  thread_index);
 
     ipcl::terminateContext();
@@ -649,12 +652,12 @@ void FPSISenderH::msg_lp() {
   };
 
   lp_timer.start();
-  // 启动线程
+  // start threads
   for (u64 t = 0; t < THREAD_NUM; t++) {
     get_value_lp_ths.emplace_back(get_value_lp, t);
   }
 
-  // 等待所有线程完成
+  // Wait for all threads to complete
   for (auto &th : get_value_lp_ths) {
     th.join();
   }
@@ -690,12 +693,12 @@ void FPSISenderH::msg_lp() {
   coproto::sync_wait(sockets[0].recvResize(recv_prefixs_dh));
   std::shuffle(recv_prefixs_dh.begin(), recv_prefixs_dh.end(), prng);
 
-  spdlog::info("sender: recv_prefixs_dh 接收完成");
+  spdlog::info("Sender: received recv_prefixs_dh");
 
   coproto::sync_wait(sockets[0].send(sender_random_prefixes_dh));
 
   insert_commus("sender_random_prefixes_dh", 0);
-  spdlog::info("sender: sender_random_prefixes_dh 发送完成");
+  spdlog::info("Sender: sender_random_prefixes_dh has been sent");
 
   vector<DH25519_point> recv_prefixs_dh_k;
   recv_prefixs_dh_k.reserve(PTS_NUM * IF_MATCH_PARAM.first.size());
@@ -705,13 +708,14 @@ void FPSISenderH::msg_lp() {
     recv_prefixs_dh_k.push_back(iter * dh_sk);
   }
   lp_timer.end("recv_prefixs_dh_k");
-  spdlog::info("sender: recv_prefixs_dh_k 计算完成");
+  spdlog::info("Sender: recv_prefixs_dh_k computation completed");
 
   coproto::sync_wait(sockets[0].send(recv_prefixs_dh_k));
   insert_commus("recv_prefixs_dh_k", 0);
 
-  spdlog::info("sender: recv_prefixs_dh_k 发送完成, recv_prefixs_dh_k size {}",
-               recv_prefixs_dh_k.size());
+  spdlog::info(
+      "Sender: recv_prefixs_dh_k has been sent, recv_prefixs_dh_k size {}",
+      recv_prefixs_dh_k.size());
 
   merge_timer(lp_timer);
 }

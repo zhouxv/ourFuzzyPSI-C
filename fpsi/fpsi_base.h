@@ -9,11 +9,11 @@ public:
   explicit FPSIBase(vector<coproto::Socket> &sockets) : sockets(sockets) {}
 
   /*
-  通信及统计信息
+  Counter of Communication and Time
   */
-  simpleTimer fpsi_timer;                        // 计时器
-  std::vector<std::pair<string, double>> commus; // 通信计数
-  vector<coproto::Socket> &sockets;              // 通信套接字
+  simpleTimer fpsi_timer;                        // timer
+  std::vector<std::pair<string, double>> commus; // communication counter
+  vector<coproto::Socket> &sockets;              // communication socket
 
   void print_time() { fpsi_timer.print(); }
 
@@ -31,10 +31,9 @@ public:
     sockets[socket_index].mImpl->mBytesSent = 0;
   }
 
-  // 纯虚函数构成接口
-  virtual void init() = 0; // 初始化方法
-  virtual void msg() = 0;  // 消息处理方法
+  virtual void init() = 0; // init method (offline)
+  virtual void msg() = 0;  // msg process method (online)
 
-  // 虚析构函数（多态基类必需）
+  // required
   virtual ~FPSIBase() = default;
 };

@@ -16,25 +16,25 @@
 
 class FPSIRecv : public FPSIBase {
 public:
-  // 协议的一些参数
-  const u64 DIM;        // 维度
-  const u64 DELTA;      // 半径
-  const u64 PTS_NUM;    // 点集合的数量
+  // Some important parameters of the protocol
+  const u64 DIM;        // dimension
+  const u64 DELTA;      // radius
+  const u64 PTS_NUM;    // number of point set
   const u64 METRIC;     // L_?
-  const u64 THREAD_NUM; // 线程数
+  const u64 THREAD_NUM; // number of threads
 
-  // 一些核心对象的引用
-  vector<pt> &pts; // 点集
+  // References to some core objects
+  vector<pt> &pts; // point set
   const ipcl::PublicKey pk;
   const ipcl::PrivateKey sk;
   const DH25519_number dh_sk;
 
-  // 计算的一些参数
+  // parameters during the intermediate process
   PrefixParam OMEGA_PARAM;
   PrefixParam IF_MATCH_PARAM;
-  u64 SIDE_LEN;  // 直径
-  u64 BLK_CELLS; // 2^DIM
-  u64 DELTA_L2;  // delta的平方
+  u64 SIDE_LEN;  // 2*delta
+  u64 BLK_CELLS; // 2^dim
+  u64 DELTA_L2;  // delta*delta
   u64 OKVS_COUNT;
   u64 OKVS_SIZE;
 
@@ -53,18 +53,17 @@ public:
   RBOKVS rb_okvs;
   vector<RBOKVS> rb_okvs_vec;
 
-  // 预计算的密文
-  vector<vector<vector<block>>> inf_value_pre_ciphers; // L_inf使用
-  vector<vector<block>> lp_value_pre_ciphers;          // L_p getList 使用
+  // Precomputed ciphertexts
+  vector<vector<vector<block>>> inf_value_pre_ciphers; // L_inf pre
+  vector<vector<block>> lp_value_pre_ciphers;          // L_p getList pre
 
-  // 构造函数
   FPSIRecv(u64 dim, u64 delta, u64 pt_num, u64 metric, u64 thread_num,
            vector<pt> &pts, ipcl::PublicKey pk, ipcl::PrivateKey sk,
            DH25519_number dh_sk, vector<coproto::Socket> &sockets)
       : DIM(dim), DELTA(delta), PTS_NUM(pt_num), METRIC(metric),
         THREAD_NUM(thread_num), pts(pts), pk(pk), sk(sk), dh_sk(dh_sk),
         FPSIBase(sockets) {
-    // 参数初始化
+    // Parameter Initialization
     OMEGA_PARAM = get_omega_params(metric, delta, dim);
     if (metric != 0)
       IF_MATCH_PARAM = get_if_match_params(metric, delta);

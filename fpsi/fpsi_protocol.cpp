@@ -35,14 +35,13 @@ void run_low_dimension(const CLP &cmd) {
     return;
   }
 
-  // 计时
   simpleTimer timer;
 
   spdlog::info("*********************** setting ****************************");
   spdlog::info("dimension         : {}", DIM);
   spdlog::info("delta             : {}", DELTA);
   spdlog::info("distance          : l_{}", METRIC);
-  spdlog::info("recv_set_size     : {}", num);
+  spdlog::info("Recv_set_size     : {}", num);
   spdlog::info("send_set_size     : {}", num);
   spdlog::info("intersection_size : {}", intersection_size);
   spdlog::info("address           : {}:{}", IP, PORT);
@@ -61,19 +60,19 @@ void run_low_dimension(const CLP &cmd) {
   sample_points(DIM, DELTA, num, num, intersection_size, send_pts, recv_pts);
   timer.end("pts_sample");
 
-  spdlog::info("双方 pt 集合采样完成");
+  spdlog::info("Both parties point set sampling finished");
 
-  // palliar公私钥
+  // Paillier keys initialization
   ipcl::initializeContext("QAT");
   ipcl::KeyPair paillier_key = ipcl::generateKeypair(2048, true);
   ipcl::terminateContext();
 
-  // if_match DH 密钥
+  // if_match DH keys initialization
   PRNG prng(oc::sysRandomSeed());
   DH25519_number recv_dh_k(prng);
   DH25519_number send_dh_k(prng);
 
-  // 网络通信初始化
+  // Network communication initialization
   vector<coproto::Socket> socketPair0, socketPair1;
   auto init_socks = [&](Role role) {
     for (u64 i = 0; i < THREAD_NUM; ++i) {
@@ -92,9 +91,9 @@ void run_low_dimension(const CLP &cmd) {
 
   recv_socks.join();
   sender_socks.join();
-  spdlog::info("双方网络初始化完成");
+  spdlog::info("Network communication initialization");
 
-  // 接收方和发送方初始化
+  // Receiver and sender initialization
   FPSIRecv recv(DIM, DELTA, num, METRIC, 1, recv_pts, paillier_key.pub_key,
                 paillier_key.priv_key, recv_dh_k, socketPair0);
   FPSISender sender(DIM, DELTA, num, METRIC, 1, send_pts, paillier_key.pub_key,
@@ -104,17 +103,17 @@ void run_low_dimension(const CLP &cmd) {
   timer.start();
   recv.init();
   timer.end("recv_init");
-  spdlog::info("recv setup完成");
+  spdlog::info("Recv setup done");
 
   timer.start();
   sender.init();
   timer.end("sender_init");
-  spdlog::info("sender setup完成");
+  spdlog::info("Sender setup done");
 
   spdlog::info("*********************** online start ************************");
 
   timer.start();
-  // 使用 std::bind 将成员函数和对象绑定
+  // Use std::bind to bind member function and object
   std::thread recv_msg(std::bind(&FPSIRecv::msg, &recv));
   std::thread send_msg(std::bind(&FPSISender::msg, &sender));
 
@@ -153,14 +152,13 @@ void run_high_dimension(const CLP &cmd) {
     return;
   }
 
-  // 计时
   simpleTimer timer;
 
   spdlog::info("*********************** setting ****************************");
   spdlog::info("dimension         : {}", DIM);
   spdlog::info("delta             : {}", DELTA);
   spdlog::info("distance          : l_{}", METRIC);
-  spdlog::info("recv_set_size     : {}", num);
+  spdlog::info("Recv_set_size     : {}", num);
   spdlog::info("send_set_size     : {}", num);
   spdlog::info("intersection_size : {}", intersection_size);
   spdlog::info("address           : {}:{}", IP, PORT);
@@ -180,19 +178,19 @@ void run_high_dimension(const CLP &cmd) {
   sample_points(DIM, DELTA, num, num, intersection_size, send_pts, recv_pts);
   timer.end("pts_sample");
 
-  spdlog::info("双方 pt 集合采样完成");
+  spdlog::info("Both parties point set sampling finished");
 
-  // palliar公私钥
+  // Paillier keys initialization
   ipcl::initializeContext("QAT");
   ipcl::KeyPair psi_key = ipcl::generateKeypair(2048, true);
   ipcl::terminateContext();
 
-  // if_match DH 密钥
+  // if_match DH keys initialization
   PRNG prng(oc::sysRandomSeed());
   DH25519_number recv_dh_k(prng);
   DH25519_number send_dh_k(prng);
 
-  // 网络通信初始化
+  // Network communication initialization
   vector<coproto::Socket> socketPair0, socketPair1;
   auto init_socks = [&](Role role) {
     for (u64 i = 0; i < THREAD_NUM; ++i) {
@@ -211,9 +209,9 @@ void run_high_dimension(const CLP &cmd) {
 
   recv_socks.join();
   sender_socks.join();
-  spdlog::info("双方网络初始化完成");
+  spdlog::info("Network communication initialization");
 
-  // 接收方和发送方初始化
+  // Receiver and sender initialization
   FPSIRecvH recv(DIM, DELTA, num, METRIC, 1, recv_pts, psi_key.pub_key,
                  psi_key.priv_key, recv_dh_k, socketPair0);
   FPSISenderH sender(DIM, DELTA, num, METRIC, 1, send_pts, psi_key.pub_key,
@@ -223,17 +221,17 @@ void run_high_dimension(const CLP &cmd) {
   timer.start();
   recv.init();
   timer.end("recv_init");
-  spdlog::info("recv setup完成");
+  spdlog::info("Recv setup done");
 
   timer.start();
   sender.init();
   timer.end("sender_init");
-  spdlog::info("sender setup完成");
+  spdlog::info("Sender setup done");
 
   spdlog::info("*********************** online start ************************");
 
   timer.start();
-  // 使用 std::bind 将成员函数和对象绑定
+  // Use std::bind to bind member function and object
   std::thread recv_msg(std::bind(&FPSIRecvH::msg, &recv));
   std::thread send_msg(std::bind(&FPSISenderH::msg, &sender));
 
@@ -267,7 +265,7 @@ void test_low_dimension(const oc::CLP &cmd) {
   const string ip = cmd.getOr<string>("ip", "127.0.0.1");
   const u64 port = cmd.getOr<u64>("port", 1212);
 
-  for (auto num : nums) {           // 集合数量
+  for (auto num : nums) {           // set size
     for (auto dim : dims) {         // d
       for (auto metric : metrics) { // p
         for (auto del : deltas) {   // delta
@@ -304,7 +302,7 @@ void test_low_dimension(const u64 DIM, const u64 DELTA, const u64 METRIC,
   spdlog::info("dimension         : {} ", DIM);
   spdlog::info("delta             : {}", DELTA);
   spdlog::info("metric            : l_ {} ", METRIC);
-  spdlog::info("recv_set_size     : {}", recv_size);
+  spdlog::info("Recv_set_size     : {}", recv_size);
   spdlog::info("send_set_size     : {}", send_size);
   spdlog::info("intersection_size : {}", intersection_size);
   spdlog::info("address           : {}:{}", IP, PORT);
@@ -317,18 +315,18 @@ void test_low_dimension(const u64 DIM, const u64 DELTA, const u64 METRIC,
   vector<pt> recv_pts(recv_size, vector<u64>(DIM, 0));
   vector<pt> send_pts(send_size, vector<u64>(DIM, 0));
 
-  // palliar公私钥
+  // Paillier keys initialization
   ipcl::initializeContext("QAT");
   ipcl::KeyPair paillier_key = ipcl::generateKeypair(2048, true);
   ipcl::KeyPair if_match_key = ipcl::generateKeypair(2048, true);
   ipcl::terminateContext();
 
-  // if_match DH 密钥
+  // if_match DH keys initialization
   PRNG prng(oc::sysRandomSeed());
   DH25519_number recv_dh_k(prng);
   DH25519_number send_dh_k(prng);
 
-  // 网络通信初始化
+  // Network communication initialization
   vector<coproto::Socket> socketPair0, socketPair1;
   auto init_socks = [&](Role role) {
     for (u64 i = 0; i < 1; ++i) {
@@ -347,9 +345,9 @@ void test_low_dimension(const u64 DIM, const u64 DELTA, const u64 METRIC,
 
   recv_socks.join();
   sender_socks.join();
-  spdlog::info("双方网络初始化完成");
+  spdlog::info("Network communication initialization");
 
-  // 接收方和发送方初始化
+  // Receiver and sender initialization
   FPSIRecv recv(DIM, DELTA, recv_size, METRIC, 1, recv_pts,
                 paillier_key.pub_key, paillier_key.priv_key, recv_dh_k,
                 socketPair0);
@@ -358,26 +356,26 @@ void test_low_dimension(const u64 DIM, const u64 DELTA, const u64 METRIC,
 
   // offline
   recv.init();
-  spdlog::info("recv setup完成");
+  spdlog::info("Recv setup done");
 
   sender.init();
-  spdlog::info("sender setup完成");
+  spdlog::info("Sender setup done");
 
   for (u64 i = 0; i < trait; i++) {
-    // 计时
+
     simpleTimer timer;
 
-    spdlog::info("这是第 {} 个测试运行", i);
+    spdlog::info("This is the {}th test run", i);
 
     sample_points(DIM, DELTA, send_size, recv_size, intersection_size, send_pts,
                   recv_pts);
-    spdlog::info("双方 pt 集合采样完成");
+    spdlog::info("Both parties point set sampling finished");
 
     spdlog::info("----------------------- online start "
                  "------------------------");
 
     timer.start();
-    // 使用 std::bind 将成员函数和对象绑定
+    // Use std::bind to bind member function and object
     std::thread recv_msg(std::bind(&FPSIRecv::msg, &recv));
     std::thread send_msg(std::bind(&FPSISender::msg, &sender));
 
@@ -452,7 +450,7 @@ void test_high_dimension(const oc::CLP &cmd) {
   const string ip = cmd.getOr<string>("ip", "127.0.0.1");
   const u64 port = cmd.getOr<u64>("port", 1212);
 
-  for (auto num : nums) {           // 集合数量
+  for (auto num : nums) {           // set size
     for (auto dim : dims) {         // d
       for (auto metric : metrics) { // p
         for (auto del : deltas) {   // delta
@@ -494,7 +492,7 @@ void test_high_dimension(const u64 dim, const u64 DELTA, const u64 METRIC,
   spdlog::info("metric            : l_{} ", METRIC);
   spdlog::info("param             : {} ", pairToString(omega));
   spdlog::info("fm_param          : {}", pairToString(fm_param));
-  spdlog::info("recv_set_size     : {}", recv_size);
+  spdlog::info("Recv_set_size     : {}", recv_size);
   spdlog::info("send_set_size     : {}", send_size);
   spdlog::info("intersection_size : {}", intersection_size);
   spdlog::info("trait             : {}", trait);
@@ -506,18 +504,18 @@ void test_high_dimension(const u64 dim, const u64 DELTA, const u64 METRIC,
   vector<pt> recv_pts(recv_size, vector<u64>(DIM, 0));
   vector<pt> send_pts(send_size, vector<u64>(DIM, 0));
 
-  // palliar公私钥
+  // Paillier keys initialization
   ipcl::initializeContext("QAT");
   ipcl::KeyPair paillier_key = ipcl::generateKeypair(2048, true);
   ipcl::KeyPair if_match_key = ipcl::generateKeypair(2048, true);
   ipcl::terminateContext();
 
-  // if_match DH 密钥
+  // if_match DH keys initialization
   PRNG prng(oc::sysRandomSeed());
   DH25519_number recv_dh_k(prng);
   DH25519_number send_dh_k(prng);
 
-  // 网络通信初始化
+  // Network communication initialization
   vector<coproto::Socket> socketPair0, socketPair1;
   auto init_socks = [&](Role role) {
     for (u64 i = 0; i < 1; ++i) {
@@ -536,37 +534,36 @@ void test_high_dimension(const u64 dim, const u64 DELTA, const u64 METRIC,
 
   recv_socks.join();
   sender_socks.join();
-  spdlog::info("双方网络初始化完成");
+  spdlog::info("Network communication initialization");
 
   for (u64 i = 0; i < trait; i++) {
-    // 接收方和发送方初始化
+    // Receiver and sender initialization
     FPSIRecvH recv(DIM, DELTA, recv_size, METRIC, 1, recv_pts,
                    paillier_key.pub_key, paillier_key.priv_key, recv_dh_k,
                    socketPair0);
     FPSISenderH sender(DIM, DELTA, send_size, METRIC, 1, send_pts,
                        paillier_key.pub_key, send_dh_k, socketPair1);
 
-    spdlog::info("这是第 {} 个测试运行", i);
+    spdlog::info("This is the {}th test run", i);
 
     sample_points(DIM, DELTA, send_size, recv_size, intersection_size, send_pts,
                   recv_pts);
-    spdlog::info("双方 pt 集合采样完成");
+    spdlog::info("Both parties point set sampling finished");
 
     // offline
     recv.init();
-    spdlog::info("recv setup完成");
+    spdlog::info("Recv setup done");
 
     sender.init();
-    spdlog::info("sender setup完成");
+    spdlog::info("Sender setup done");
 
-    // 计时
     simpleTimer timer;
 
     spdlog::info("----------------------- online start "
                  "------------------------");
 
     timer.start();
-    // 使用 std::bind 将成员函数和对象绑定
+    // Use std::bind to bind member function and object
     std::thread recv_msg(std::bind(&FPSIRecvH::msg, &recv));
     std::thread send_msg(std::bind(&FPSISenderH::msg, &sender));
 

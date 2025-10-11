@@ -13,7 +13,7 @@
 #include "config.h"
 #include "utils/params_selects.h"
 
-// 简易计时器
+// simle timer
 typedef std::chrono::high_resolution_clock::time_point tVar;
 #define tNow() std::chrono::high_resolution_clock::now()
 #define tStart(t) t = tNow()
@@ -22,7 +22,7 @@ typedef std::chrono::high_resolution_clock::time_point tVar;
 
 class simpleTimer {
 public:
-  std::mutex mtx; // 互斥锁
+  std::mutex mtx;
   tVar t;
   std::map<string, double> timers;
   std::vector<string> timer_keys;
@@ -60,12 +60,12 @@ public:
   }
 };
 
-// 采样，并指定交点数量
+// Sampling with specified intersection size
 void sample_points(u64 dim, u64 delta, u64 sender_size, u64 recv_size,
                    u64 intersection_size, vector<pt> &sender_pts,
                    vector<pt> &recv_pts);
 
-// 空间哈希需要的辅助函数
+// Helper functions required for spatial hashing
 pt cell(const pt &p, u64 dim, u64 side_len);
 pt block_(const pt &p, u64 dim, u64 delta, u64 sidelen);
 
@@ -87,7 +87,7 @@ const PrefixParam get_if_match_params(u64 metric, u64 delta);
 
 const PrefixParam get_fuzzy_mapping_params(u64 metric, u64 delta);
 
-// 密文与block的转换
+// converse Ciphertext <-> block
 std::vector<block> bignumer_to_block_vector(const BigNumber &bn);
 BigNumber block_vector_to_bignumer(const std::vector<block> &ct);
 std::vector<block> bignumers_to_block_vector(const std::vector<BigNumber> &bns);
@@ -97,47 +97,49 @@ block_vector_to_bignumers(const std::vector<block> &ct, const u64 &value_size,
 std::vector<BigNumber> block_vector_to_bignumers(const std::vector<block> &ct,
                                                  const u64 &value_size);
 
-/// 计算所有组合的和
+/// Calculate the sum of all combinations
 ///
-/// 该函数接受一个二维向量 `results`，其中每个子向量包含一组 `u64`
-/// 值。函数生成所有可能的组合，并计算每个组合的和。
+/// This function accepts a 2D vector `results`, where each sub-vector contains
+/// a set of `u64` values. The function generates all possible combinations
+/// and calculates the sum of each combination.
 ///
-/// # 参数
-/// - `results`: 一个包含多个 `Vec<u64>`
-/// 的向量，每个子向量代表一个维度的值。
+/// # Parameters
+/// - `results`: A vector containing multiple `Vec<u64>`,
+///   each sub-vector represents values from one dimension.
 ///
-/// # 返回
-/// 返回一个 `Vec<u64>`，其中每个元素是对应组合的和。
+/// # Returns
+/// Returns a `Vec<u64>` where each element is the sum of the corresponding
+/// combination.
 ///
-/// # 示例
+/// # Example
 /// ```
 /// let results = vec![vec![1, 2], vec![3, 4]];
 /// let sums = sum_combinations(&results);
-/// assert_eq!(sums, vec![4, 5, 5, 6]); // 组合的和
+/// assert_eq!(sums, vec![4, 5, 5, 6]); // Sums of combinations
 /// ```
 ///
-/// # 注意
-/// - 函数假设所有子向量的长度相同。
-/// - 如果 `results` 为空，函数将返回一个空的 `Vec<u64>`。
+/// # Notes
+/// - The function assumes all sub-vectors have the same length.
+/// - If `results` is empty, the function returns an empty `Vec<u64>`.
 template <typename T>
 vector<u64> sum_combinations(const oc::span<T> &results, u64 dim) {
   u64 n = results.size() / dim;
   u64 count = fast_pow(n, dim);
   vector<u64> sums(count);
 
-  // 预计算 n^j，减少 `fast_pow` 的调用
+  // pre-compute n^j，less fast_pow
   vector<u64> powers(dim);
   powers[0] = 1; // n^0 = 1
   for (u64 j = 1; j < dim; ++j) {
-    powers[j] = powers[j - 1] * n; // 直接计算 n^j
+    powers[j] = powers[j - 1] * n; // compute n^j
   }
 
   for (u64 i = 0; i < count; ++i) {
     u64 current_sum = 0;
     for (u64 j = 0; j < dim; ++j) {
-      // 计算当前维度的索引
+      // compute index of current
       u64 index = (i / powers[j]) % n;
-      // 累加当前维度的值
+      // Accumulate values of the current dimension
       current_sum += results[j * n + index];
     }
     sums[i] = current_sum;
@@ -149,7 +151,6 @@ vector<u64> sum_combinations(const oc::span<T> &results, u64 dim) {
   return sums;
 }
 
-/// 获取 OKVS 的 key, inf
 inline vector<block> get_keys_from_dec(const vector<string> &strs) {
   blake3_hasher hasher;
   block hash_out;
@@ -167,7 +168,6 @@ inline vector<block> get_keys_from_dec(const vector<string> &strs) {
   return keys;
 }
 
-/// 获取 OKVS 的 key, inf
 inline block get_key_from_dec(string &dec) {
   blake3_hasher hasher;
   block hash_out;
@@ -179,7 +179,6 @@ inline block get_key_from_dec(string &dec) {
   return hash_out;
 }
 
-/// 获取 OKVS 的 key, inf
 inline block get_key_from_dim_dec_cell(const u64 &dim, const string &dec,
                                        const vector<u64> &cell) {
   blake3_hasher hasher;
@@ -195,7 +194,6 @@ inline block get_key_from_dim_dec_cell(const u64 &dim, const string &dec,
   return hash_out;
 }
 
-/// 获取 OKVS 的 key, inf
 inline block get_key_from_dim_dec(const u64 dim, const string &dec) {
   blake3_hasher hasher;
   block hash_out;
@@ -221,7 +219,6 @@ inline block get_key_from_dim_dec_id(const u64 dim, const string &dec, u64 id) {
   return hash_out;
 }
 
-/// 获取 OKVS 的 key, Lp
 inline block get_key_from_dim_sigma_dec_cell(const u64 &dim, const u64 &sigma,
                                              const string &dec,
                                              const vector<u64> &cell) {
@@ -255,7 +252,7 @@ inline block get_key_from_dim_sigma_dec_id(const u64 dim, const u64 sigma,
   return hash_out;
 }
 
-// 填充到指定长度的数据
+// Pad datas to specified length
 inline void padding_keys(vector<block> &keys, u64 count) {
   if (keys.size() >= count) {
     return;
@@ -268,6 +265,7 @@ inline void padding_keys(vector<block> &keys, u64 count) {
   }
 }
 
+// Pad datas to specified length
 inline void padding_values(vector<vector<block>> &values, u64 count,
                            u64 blk_size) {
   if (values.size() >= count) {
@@ -284,6 +282,7 @@ inline void padding_values(vector<vector<block>> &values, u64 count,
   }
 }
 
+// Pad datas to specified length
 inline void padding_bignumers(vector<BigNumber> &nums, u64 count,
                               u64 blk_size) {
   if (nums.size() >= count) {
@@ -310,11 +309,10 @@ inline void padding_vec_8(vector<u64> &vec) {
   }
 }
 
-// 用于排序
 struct Monty25519Hash {
   std::size_t operator()(const osuCrypto::Sodium::Monty25519 &point) const {
     std::array<u8, 32> bytes;
-    point.toBytes(bytes.data()); // 假设 Monty25519 提供 toBytes 方法
+    point.toBytes(bytes.data()); // Assuming Monty25519 provides toBytes method
     return std::hash<std::string_view>()(
         std::string_view(reinterpret_cast<const char *>(bytes.data()), 32));
   }

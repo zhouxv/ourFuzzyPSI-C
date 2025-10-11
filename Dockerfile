@@ -30,8 +30,22 @@ RUN add-apt-repository ppa:ubuntu-toolchain-r/test -y && \
     update-alternatives --set gcc /usr/bin/gcc-13 && \
     update-alternatives --set g++ /usr/bin/g++-13
 
+# Install thirdparty dependencies
+COPY ./shell_install_all_dependencies.sh \
+    ./shell_utils.sh \
+    ./
+
+# COPY ./thirdparty/boost_1_86_0.tar.bz2 ./thirdparty/
 
 
+RUN chmod +x ./*.sh && \
+    ./shell_install_all_dependencies.sh
+
+
+COPY ./shell_build_cmd.sh \
+    ./shell_run_bench.sh \
+    ./CMakeLists.txt \
+    ./
 
 
 # Copying sourcode files
@@ -43,4 +57,9 @@ COPY ./*.sh \
     ./README.md \
     ./
 
-RUN chmod +x ./*.sh
+RUN chmod +x ./*.sh && \
+    ./shell_build_cmd.sh
+
+COPY ./README.md ./
+
+
