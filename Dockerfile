@@ -44,6 +44,7 @@ RUN chmod +x ./*.sh && \
 
 COPY ./shell_build_cmd.sh \
     ./shell_run_bench.sh \
+    ./shell_run_bench_fmap.sh \
     ./CMakeLists.txt \
     ./
 
@@ -51,7 +52,6 @@ COPY ./shell_build_cmd.sh \
 # Copying sourcode files
 COPY ./fpsi/ ./fpsi/
 COPY ./frontend/ ./frontend/
-# COPY ./thirdparty/boost_1_86_0.tar.bz2 ./thirdparty/
 COPY ./*.sh \
     ./CMakeLists.txt \
     ./README.md \

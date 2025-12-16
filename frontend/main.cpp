@@ -64,6 +64,9 @@ int main(int argc, char **argv) {
   case 4:
     test_high_dimension(cmd);
     break;
+  case 5:
+    test_fmap(cmd);
+    break;
   default:
     spdlog::error("Unknown protocol type", protocol_type);
     usage();

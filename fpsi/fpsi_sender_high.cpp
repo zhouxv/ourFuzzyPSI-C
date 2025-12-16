@@ -19,7 +19,7 @@
 #include "utils/util.h"
 
 void FPSISenderH::fuzzy_mapping_offline() {
-  FUZZY_MAPPING_PARAM = FuzzyMappingParamTable::getSelectedParam(2 * DELTA + 1);
+  FUZZY_MAPPING_PARAM = get_fuzzy_mapping_params(METRIC, DELTA);
 
   auto mask_size = PTS_NUM * DIM;
   masks_0_values.resize(mask_size);

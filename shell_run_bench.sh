@@ -18,14 +18,5 @@ trap 'cleanup' INT TERM EXIT
 log "Running benchmarks for FuzzyPSI protocol..."
 printf "[ProType] [Metric] [Dim] [Delta] [Size] [Com.(MB)] [Time(s)]\n"
 
-./build/main -p 3 -n 8 -d 2 -delta 16 64 256 -m 0  -log 0 -trait 5
-./build/main -p 3 -n 8 -d 2 -delta 16 64 256 -m 1  -log 0 -trait 5
-./build/main -p 3 -n 8 -d 2 -delta 16 64 256 -m 2  -log 0 -trait 5
+./build/main -p 5 -n 8 12 -d 2 6 10 15 -delta 10 60 250 -m 0  -log 0 -trait 3
 
-./build/main -p 4 -n 8 -d 5 -delta 16 64 256 -m 0  -log 0 -trait 5
-./build/main -p 4 -n 8 -d 5 -delta 16 64 256 -m 1  -log 0 -trait 5
-./build/main -p 4 -n 8 -d 5 -delta 16 64 256 -m 2  -log 0 -trait 5
-
-./build/main -p 4 -n 8 -d 8 -delta 16 64 256 -m 0  -log 0 -trait 5
-./build/main -p 4 -n 8 -d 8 -delta 16 64 256 -m 1  -log 0 -trait 5
-./build/main -p 4 -n 8 -d 8 -delta 16 64 256 -m 2  -log 0 -trait 5
