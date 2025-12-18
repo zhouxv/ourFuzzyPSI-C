@@ -81,6 +81,11 @@ vector<u64> sum_combinations(const oc::span<u32> &results, u64 dim);
 u64 fast_pow(u64 base, u64 exp);
 u64 combination(u64 n, u64 k);
 
+// helper functions for block vector manipulation
+vector<block> flattenBlocks(const vector<vector<block>> &blockData);
+vector<vector<block>> chunkFixedSizeBlocks(const vector<block> &flatData,
+                                           size_t chunk_size);
+
 const PrefixParam get_omega_params(u64 metric, u64 delta, u64 dim);
 
 const PrefixParam get_if_match_params(u64 metric, u64 delta);

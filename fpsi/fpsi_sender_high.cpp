@@ -93,14 +93,14 @@ void FPSISenderH::fuzzy_mapping_online() {
   coproto::sync_wait(sockets[0].recv(get_id_mN));
   coproto::sync_wait(sockets[0].recv(get_id_mSize));
 
-  vector<vector<vector<block>>> get_id_encodings(
-      DIM, vector<vector<block>>(get_id_mSize,
-                                 vector<block>(get_id_value_block_length)));
+  vector<vector<vector<block>>> get_id_encodings(DIM);
 
   for (u64 i = 0; i < DIM; i++) {
-    for (u64 j = 0; j < get_id_mSize; j++) {
-      coproto::sync_wait(sockets[0].recvResize(get_id_encodings[i][j]));
-    }
+    vector<block> tmp_encodings(get_id_mSize * get_id_value_block_length);
+    coproto::sync_wait(sockets[0].recvResize(tmp_encodings));
+    coproto::sync_wait(sockets[0].flush());
+    get_id_encodings[i] =
+        chunkFixedSizeBlocks(tmp_encodings, get_id_value_block_length);
   }
 
   spdlog::info("Sender received get_id_encodings");
@@ -168,10 +168,13 @@ void FPSISenderH::fuzzy_mapping_online() {
 
   coproto::sync_wait(sockets[0].send(u_.getSize()));
   coproto::sync_wait(sockets[0].send(padding_count));
-  for (u64 i = 0; i < u_.getSize(); i++) {
-    coproto::sync_wait(sockets[0].send(bignumer_to_block_vector(u_[i])));
-    coproto::sync_wait(sockets[0].send(bignumer_to_block_vector(v_[i])));
-  }
+
+  auto u_blks = bignumers_to_block_vector(u_.getTexts());
+  auto v_blks = bignumers_to_block_vector(v_.getTexts());
+
+  coproto::sync_wait(sockets[0].send(u_blks));
+  coproto::sync_wait(sockets[0].flush());
+  coproto::sync_wait(sockets[0].send(v_blks));
   coproto::sync_wait(sockets[0].flush());
   spdlog::info("Sender Fmap ciphertext has been send");
   insert_commus("sender_fm_ciphers", 0);

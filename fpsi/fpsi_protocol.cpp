@@ -731,6 +731,8 @@ void test_fmap(const u64 DIM, const u64 DELTA, const u64 METRIC, string IP,
                   recv_pts);
     spdlog::info("Both parties point set sampling finished");
 
+    simpleTimer timer;
+    timer.start();
     // offline
     if (FAKE) {
       recv.fuzzy_mapping_offline_fake();
@@ -745,8 +747,7 @@ void test_fmap(const u64 DIM, const u64 DELTA, const u64 METRIC, string IP,
       sender.fuzzy_mapping_offline();
       spdlog::info("Sender fmap setup done");
     }
-
-    simpleTimer timer;
+    timer.end("fmap_offline");
     spdlog::info("----------------------- online start "
                  "------------------------");
 

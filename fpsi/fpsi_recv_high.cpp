@@ -184,13 +184,11 @@ void FPSIRecvH::fuzzy_mapping_online() {
   coproto::sync_wait(sockets[0].send(get_id_mSize));
 
   for (u64 i = 0; i < DIM; i++) {
-    for (u64 j = 0; j < get_id_mSize; j++) {
-      coproto::sync_wait(sockets[0].send(get_id_encodings[i][j]));
-    }
+    coproto::sync_wait(sockets[0].send(flattenBlocks(get_id_encodings[i])));
   }
 
-  insert_commus("recv_fm_get_id_encodings", 0);
   coproto::sync_wait(sockets[0].flush());
+  insert_commus("recv_fm_get_id_encodings", 0);
 
   /*--------------------------------------------------------------------------------------------------------------------------------*/
   // recv fmap ciphertexts
@@ -202,17 +200,15 @@ void FPSIRecvH::fuzzy_mapping_online() {
   coproto::sync_wait(sockets[0].recv(j_count));
   coproto::sync_wait(sockets[0].flush());
 
-  vector<BigNumber> u_(ciphers_size, 0);
-  vector<BigNumber> v_(ciphers_size, 0);
+  vector<block> tmp_vec0(ciphers_size * PAILLIER_CIPHER_SIZE_IN_BLOCK);
 
-  for (u64 i = 0; i < ciphers_size; i++) {
-    vector<block> tmp;
-    vector<block> tmp2;
-    coproto::sync_wait(sockets[0].recvResize(tmp));
-    coproto::sync_wait(sockets[0].recvResize(tmp2));
-    u_[i] = block_vector_to_bignumer(tmp);
-    v_[i] = block_vector_to_bignumer(tmp2);
-  }
+  coproto::sync_wait(sockets[0].recvResize(tmp_vec0));
+  coproto::sync_wait(sockets[0].flush());
+  vector<BigNumber> u_ = block_vector_to_bignumers(tmp_vec0, ciphers_size);
+
+  coproto::sync_wait(sockets[0].recvResize(tmp_vec0));
+  coproto::sync_wait(sockets[0].flush());
+  vector<BigNumber> v_ = block_vector_to_bignumers(tmp_vec0, ciphers_size);
 
   spdlog::info("Recv fm ciphertexts received");
 
@@ -270,6 +266,7 @@ void FPSIRecvH::fuzzy_mapping_online() {
   }
 
   coproto::sync_wait(sockets[0].send(fm_res));
+  coproto::sync_wait(sockets[0].flush());
   insert_commus("recv_fm_pis", 0);
 
   merge_timer(fm_timer);
