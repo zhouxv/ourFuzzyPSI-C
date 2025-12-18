@@ -145,6 +145,32 @@ void FPSIRecvH::get_ID() {
 
 void FPSIRecvH::fuzzy_mapping_offline() { get_ID(); }
 
+void FPSIRecvH::fuzzy_mapping_offline_fake() {
+  PRNG prng(oc::sysRandomSeed());
+  IDs.resize(PTS_NUM, 0);
+  prng.get(IDs.data(), IDs.size());
+  spdlog::debug("recv IDs fake data gen finished");
+
+  RBOKVS rb_okvs;
+  u64 okvs_mN = PTS_NUM * FUZZY_MAPPING_PARAM.second;
+  rb_okvs.init(okvs_mN, OKVS_EPSILON, OKVS_LAMBDA, OKVS_SEED);
+  u64 okvs_mSize = rb_okvs.mSize;
+  u64 value_block_length = PAILLIER_CIPHER_SIZE_IN_BLOCK * 2;
+
+  get_id_encodings = vector<vector<vector<block>>>(
+      DIM,
+      vector<vector<block>>(okvs_mSize, vector<block>(value_block_length)));
+
+  for (auto &dim_vec : get_id_encodings) {
+    for (auto &row : dim_vec) {
+      // 一次性填充整个行
+      prng.get(row.data(), row.size());
+    }
+  }
+
+  spdlog::debug("recv get_id_encodings fake data gen finished");
+}
+
 void FPSIRecvH::fuzzy_mapping_online() {
   simpleTimer fm_timer;
 

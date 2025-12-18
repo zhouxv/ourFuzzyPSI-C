@@ -104,5 +104,6 @@ public:
 
   // fuzzy mapping
   void fuzzy_mapping_offline();
+  void fuzzy_mapping_offline_fake();
   void fuzzy_mapping_online();
 };

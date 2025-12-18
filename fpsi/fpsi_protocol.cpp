@@ -635,6 +635,7 @@ void test_fmap(const oc::CLP &cmd) {
   const vector<u64> dims = cmd.getManyOr<u64>("d", {2});
   const vector<u64> metrics = cmd.getManyOr<u64>("m", {0});
   const vector<u64> deltas = cmd.getManyOr<u64>("delta", {16});
+  const bool fake = cmd.isSet("fake");
 
   const string ip = cmd.getOr<string>("ip", "127.0.0.1");
   const u64 port = cmd.getOr<u64>("port", 1212);
@@ -643,7 +644,7 @@ void test_fmap(const oc::CLP &cmd) {
     for (auto dim : dims) {         // d
       for (auto metric : metrics) { // p
         for (auto del : deltas) {   // delta
-          test_fmap(dim, del, metric, ip, port, num, num, trait);
+          test_fmap(dim, del, metric, ip, port, num, num, trait, fake);
         }
         std::cout << std::endl;
       }
@@ -651,12 +652,12 @@ void test_fmap(const oc::CLP &cmd) {
   }
 }
 
-void test_fmap(const u64 dim, const u64 DELTA, const u64 METRIC, string IP,
-               u64 PORT, const u64 logr, const u64 logs, const u64 trait) {
-  const u64 DIM = dim;
-  const u64 recv_size = 1ull << logr;
-  const u64 send_size = 1ull << logs;
-  const u64 intersection_size = logr;
+void test_fmap(const u64 DIM, const u64 DELTA, const u64 METRIC, string IP,
+               u64 PORT, const u64 LOGR, const u64 LOGS, const u64 TRAIT,
+               const bool FAKE) {
+  const u64 recv_size = 1ull << LOGR;
+  const u64 send_size = 1ull << LOGS;
+  const u64 intersection_size = LOGR;
 
   if ((intersection_size > recv_size) | (intersection_size > send_size)) {
     spdlog::error("intersection_size should not be greater than set_size");
@@ -675,10 +676,10 @@ void test_fmap(const u64 dim, const u64 DELTA, const u64 METRIC, string IP,
   spdlog::info("Recv_set_size     : {}", recv_size);
   spdlog::info("send_set_size     : {}", send_size);
   spdlog::info("intersection_size : {}", intersection_size);
-  spdlog::info("trait             : {}", trait);
+  spdlog::info("trait             : {}", TRAIT);
 
-  vector<double> time_sums(trait, 0);
-  vector<double> comm_sums(trait, 0.0);
+  vector<double> time_sums(TRAIT, 0);
+  vector<double> comm_sums(TRAIT, 0.0);
   u64 pass_count = 0;
 
   vector<pt> recv_pts(recv_size, vector<u64>(DIM, 0));
@@ -716,7 +717,7 @@ void test_fmap(const u64 dim, const u64 DELTA, const u64 METRIC, string IP,
   sender_socks.join();
   spdlog::info("Network communication initialization");
 
-  for (u64 i = 0; i < trait; i++) {
+  for (u64 i = 0; i < TRAIT; i++) {
     // Receiver and sender initialization
     FPSIRecvH recv(DIM, DELTA, recv_size, METRIC, 1, recv_pts,
                    paillier_key.pub_key, paillier_key.priv_key, recv_dh_k,
@@ -731,11 +732,19 @@ void test_fmap(const u64 dim, const u64 DELTA, const u64 METRIC, string IP,
     spdlog::info("Both parties point set sampling finished");
 
     // offline
-    recv.fuzzy_mapping_offline();
-    spdlog::info("Recv fmap setup done");
+    if (FAKE) {
+      recv.fuzzy_mapping_offline_fake();
+      spdlog::info("Recv fmap fake setup done");
 
-    sender.fuzzy_mapping_offline();
-    spdlog::info("Sender fmap setup done");
+      sender.fuzzy_mapping_offline_fake();
+      spdlog::info("Sender fmap fake setup done");
+    } else {
+      recv.fuzzy_mapping_offline();
+      spdlog::info("Recv fmap setup done");
+
+      sender.fuzzy_mapping_offline();
+      spdlog::info("Sender fmap setup done");
+    }
 
     simpleTimer timer;
     spdlog::info("----------------------- online start "
@@ -784,9 +793,9 @@ void test_fmap(const u64 dim, const u64 DELTA, const u64 METRIC, string IP,
   }
 
   double avg_online_time =
-      accumulate(time_sums.begin(), time_sums.end(), 0.0) / 1000.0 / trait;
+      accumulate(time_sums.begin(), time_sums.end(), 0.0) / 1000.0 / TRAIT;
 
-  double avg_com = accumulate(comm_sums.begin(), comm_sums.end(), 0.0) / trait;
+  double avg_com = accumulate(comm_sums.begin(), comm_sums.end(), 0.0) / TRAIT;
 
   cout << std::format("[Fmap]  {:^5}  {:^5}  {:^5}  {:^10.3f} {:^10.3f}", DIM,
                       DELTA, recv_size, avg_com, avg_online_time)

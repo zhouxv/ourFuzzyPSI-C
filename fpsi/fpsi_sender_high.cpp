@@ -46,6 +46,42 @@ void FPSISenderH::fuzzy_mapping_offline() {
   spdlog::debug("sender mask ciphertexts computation completed");
 };
 
+void FPSISenderH::fuzzy_mapping_offline_fake() {
+  FUZZY_MAPPING_PARAM = get_fuzzy_mapping_params(METRIC, DELTA);
+
+  //
+  auto mask_size = PTS_NUM * DIM;
+  masks_0_values_u64.resize(mask_size);
+  masks_1_values_u64.resize(mask_size);
+
+  PRNG prng((block(oc::sysRandomSeed())));
+  prng.get(masks_0_values_u64.data(), mask_size);
+  prng.get(masks_1_values_u64.data(), mask_size);
+
+  //
+  ipcl::initializeContext("QAT");
+  ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
+
+  vector<BigNumber> random_cipher_vec_0(mask_size);
+  vector<BigNumber> random_cipher_vec_1(mask_size);
+  vector<u64> random_cipher_vec_0_u64(mask_size);
+  vector<u64> random_cipher_vec_1_u64(mask_size);
+  prng.get(random_cipher_vec_0_u64.data(), mask_size);
+  prng.get(random_cipher_vec_1_u64.data(), mask_size);
+  for (u64 i = 0; i < mask_size; i++) {
+    random_cipher_vec_0[i] =
+        BigNumber(reinterpret_cast<Ipp32u *>(&random_cipher_vec_0_u64[i]), 2);
+    random_cipher_vec_1[i] =
+        BigNumber(reinterpret_cast<Ipp32u *>(&random_cipher_vec_0_u64[i]), 2);
+  }
+  fm_masks_0_ciphers = ipcl::CipherText(pk, random_cipher_vec_0);
+  fm_masks_1_ciphers = ipcl::CipherText(pk, random_cipher_vec_1);
+
+  ipcl::terminateContext();
+
+  spdlog::debug("fuzzy_mapping_offline_fake finished");
+}
+
 void FPSISenderH::fuzzy_mapping_online() {
   simpleTimer fm_timer;
   /*--------------------------------------------------------------------------------------------------------------------------------*/
