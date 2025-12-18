@@ -5,6 +5,7 @@ WORKDIR /home
 # Install dependencies
 RUN apt-get update && \
     apt-get install -y \
+    vim \
     git \
     python3 \
     python3-pip \
