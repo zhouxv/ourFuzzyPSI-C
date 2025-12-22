@@ -183,9 +183,6 @@ void FPSISenderH::fuzzy_mapping_online() {
   spdlog::info("Sender Fmap ciphertext has been send");
   insert_commus("sender_fm_ciphers", 0);
 
-  get_id_encodings.clear();
-  get_id_encodings.shrink_to_fit();
-
   /*--------------------------------------------------------------------------------------------------------------------------------*/
   // PIS protocol
   /*--------------------------------------------------------------------------------------------------------------------------------*/

@@ -219,6 +219,7 @@ void FPSIRecvH::fuzzy_mapping_online() {
   auto u_dec_vec = sk.decrypt(ipcl::CipherText(pk, u_));
   auto v_dec_vec = sk.decrypt(ipcl::CipherText(pk, v_));
   fm_timer.end("recv_fm_decrypt");
+  spdlog::debug("[recv] u v dec finished");
 
   u64 dec_vec_num = PTS_NUM * DIM;
   u64 every_size = ciphers_size / dec_vec_num;
