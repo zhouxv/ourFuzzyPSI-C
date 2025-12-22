@@ -534,9 +534,11 @@ void send_chunk(vector<block> &blks, coproto::Socket &socket) {
     coproto::sync_wait(socket.flush());
   }
   // 最后一块
-  std::span<block> view(blks.data() + deal * COMMU_CHUNK_SIZE, remainder);
-  coproto::sync_wait(socket.send(view));
-  coproto::sync_wait(socket.flush());
+  if (remainder != 0) {
+    std::span<block> view(blks.data() + deal * COMMU_CHUNK_SIZE, remainder);
+    coproto::sync_wait(socket.recvResize(view));
+    coproto::sync_wait(socket.flush());
+  }
 }
 
 void recv_chunk(vector<block> &blks, coproto::Socket &socket) {
@@ -550,7 +552,9 @@ void recv_chunk(vector<block> &blks, coproto::Socket &socket) {
     coproto::sync_wait(socket.flush());
   }
   // 最后一块
-  std::span<block> view(blks.data() + deal * COMMU_CHUNK_SIZE, remainder);
-  coproto::sync_wait(socket.recvResize(view));
-  coproto::sync_wait(socket.flush());
+  if (remainder != 0) {
+    std::span<block> view(blks.data() + deal * COMMU_CHUNK_SIZE, remainder);
+    coproto::sync_wait(socket.recvResize(view));
+    coproto::sync_wait(socket.flush());
+  }
 }
