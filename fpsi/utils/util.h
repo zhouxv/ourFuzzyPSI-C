@@ -1,5 +1,6 @@
 #pragma once
 
+#include <coproto/Socket/Socket.h>
 #include <vector>
 
 #include <blake3.h>
@@ -322,3 +323,6 @@ struct Monty25519Hash {
         std::string_view(reinterpret_cast<const char *>(bytes.data()), 32));
   }
 };
+
+void send_chunk(vector<block> &blks, coproto::Socket &socket);
+void recv_chunk(vector<block> &blks, coproto::Socket &socket);

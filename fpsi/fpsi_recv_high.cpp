@@ -195,20 +195,19 @@ void FPSIRecvH::fuzzy_mapping_online() {
   /*--------------------------------------------------------------------------------------------------------------------------------*/
 
   u64 ciphers_size = 0;
-  u64 j_count = 0;
+  u64 ciphers_blks_size = 0;
   coproto::sync_wait(sockets[0].recv(ciphers_size));
-  coproto::sync_wait(sockets[0].recv(j_count));
+  coproto::sync_wait(sockets[0].recv(ciphers_blks_size));
   coproto::sync_wait(sockets[0].flush());
 
-  vector<block> tmp_vec0(ciphers_size * PAILLIER_CIPHER_SIZE_IN_BLOCK);
+  vector<block> tmp_vec0(ciphers_blks_size);
+  vector<block> tmp_vec1(ciphers_blks_size);
 
-  coproto::sync_wait(sockets[0].recvResize(tmp_vec0));
-  coproto::sync_wait(sockets[0].flush());
+  recv_chunk(tmp_vec0, sockets[0]);
   vector<BigNumber> u_ = block_vector_to_bignumers(tmp_vec0, ciphers_size);
 
-  coproto::sync_wait(sockets[0].recvResize(tmp_vec0));
-  coproto::sync_wait(sockets[0].flush());
-  vector<BigNumber> v_ = block_vector_to_bignumers(tmp_vec0, ciphers_size);
+  recv_chunk(tmp_vec1, sockets[0]);
+  vector<BigNumber> v_ = block_vector_to_bignumers(tmp_vec1, ciphers_size);
 
   spdlog::info("Recv fm ciphertexts received");
 

@@ -522,3 +522,35 @@ vector<vector<block>> chunkFixedSizeBlocks(const vector<block> &flatData,
 
   return result;
 }
+
+void send_chunk(vector<block> &blks, coproto::Socket &socket) {
+  auto flat_size = blks.size();
+  auto deal = flat_size / COMMU_CHUNK_SIZE;
+  auto remainder = flat_size % COMMU_CHUNK_SIZE;
+  // 前n块
+  for (u64 i = 0; i < deal; i++) {
+    std::span<block> view(blks.data() + i * COMMU_CHUNK_SIZE, COMMU_CHUNK_SIZE);
+    coproto::sync_wait(socket.send(view));
+    coproto::sync_wait(socket.flush());
+  }
+  // 最后一块
+  std::span<block> view(blks.data() + deal * COMMU_CHUNK_SIZE, remainder);
+  coproto::sync_wait(socket.send(view));
+  coproto::sync_wait(socket.flush());
+}
+
+void recv_chunk(vector<block> &blks, coproto::Socket &socket) {
+  auto flat_size = blks.size();
+  auto deal = flat_size / COMMU_CHUNK_SIZE;
+  auto remainder = flat_size % COMMU_CHUNK_SIZE;
+  // 前n块
+  for (u64 i = 0; i < deal; i++) {
+    std::span<block> view(blks.data() + i * COMMU_CHUNK_SIZE, COMMU_CHUNK_SIZE);
+    coproto::sync_wait(socket.recvResize(view));
+    coproto::sync_wait(socket.flush());
+  }
+  // 最后一块
+  std::span<block> view(blks.data() + deal * COMMU_CHUNK_SIZE, remainder);
+  coproto::sync_wait(socket.recvResize(view));
+  coproto::sync_wait(socket.flush());
+}

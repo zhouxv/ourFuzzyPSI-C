@@ -166,18 +166,25 @@ void FPSISenderH::fuzzy_mapping_online() {
   fm_timer.end("sender_fm_encrypt");
   spdlog::info("Sender fuzzy mapping encrypt ok");
 
-  coproto::sync_wait(sockets[0].send(u_.getSize()));
-  coproto::sync_wait(sockets[0].send(padding_count));
-
   auto u_blks = bignumers_to_block_vector(u_.getTexts());
   auto v_blks = bignumers_to_block_vector(v_.getTexts());
 
-  coproto::sync_wait(sockets[0].send(u_blks));
-  coproto::sync_wait(sockets[0].flush());
-  coproto::sync_wait(sockets[0].send(v_blks));
-  coproto::sync_wait(sockets[0].flush());
+  coproto::sync_wait(sockets[0].send(u_.getSize()));
+  coproto::sync_wait(sockets[0].send(u_blks.size()));
+
+  spdlog::debug("[send] u v size {}, {} MB, u v block size {}", u_.getSize(),
+                u_.getSize() * PAILLIER_KEY_SIZE_IN_BIT * 2 / 8 / 1024.0 /
+                    1024.0,
+                u_blks.size());
+
+  send_chunk(u_blks, sockets[0]);
+  send_chunk(v_blks, sockets[0]);
+
   spdlog::info("Sender Fmap ciphertext has been send");
   insert_commus("sender_fm_ciphers", 0);
+
+  get_id_encodings.clear();
+  get_id_encodings.shrink_to_fit();
 
   /*--------------------------------------------------------------------------------------------------------------------------------*/
   // PIS protocol
