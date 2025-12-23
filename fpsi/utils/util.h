@@ -38,7 +38,7 @@ public:
 
   void print() {
     for (const string &key : timer_keys) {
-      spdlog::info("{}: {} ms; {} s", key, timers[key], timers[key] / 1000);
+      spdlog::info("{}: {} ms; {} s", key, timers[key], timers[key] / 1000.0);
     }
   }
 
