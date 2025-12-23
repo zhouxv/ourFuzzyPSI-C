@@ -1,10 +1,7 @@
-#include <algorithm>
+
 #include <atomic>
 #include <format>
-#include <ipcl/utils/context.hpp>
 #include <iterator>
-#include <thread>
-#include <vector>
 
 #include <cryptoTools/Common/BitVector.h>
 #include <cryptoTools/Common/Defines.h>
@@ -12,6 +9,7 @@
 #include <ipcl/bignum.h>
 #include <ipcl/ciphertext.hpp>
 #include <ipcl/plaintext.hpp>
+#include <ipcl/utils/context.hpp>
 #include <spdlog/spdlog.h>
 
 #include "config.h"
@@ -35,8 +33,6 @@ void FPSIRecv::init_inf_low() {
   spdlog::debug("rb_okvs_vec init done");
 
   // zero homo ciphertexts init
-  ipcl::initializeContext("QAT");
-  ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
 
   vector<u32> vec_zero_cipher(omega, 0);
   ipcl::PlainText pt_zero = ipcl::PlainText(vec_zero_cipher);
@@ -58,8 +54,6 @@ void FPSIRecv::init_inf_low() {
     }
   }
   spdlog::debug("zero ciphers init done");
-
-  ipcl::terminateContext();
 }
 
 /// offline phase, low-di, Lp, multi-thread OKVS
@@ -77,8 +71,6 @@ void FPSIRecv::init_lp_low() {
 
   // Homomorphic ciphertext initialization
   // Compute homomorphic ciphertexts for values from 0 to DELTA^p
-  ipcl::initializeContext("QAT");
-  ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
 
   vector<u32> num_vec;
   num_vec.resize((DELTA + 1) * METRIC);
@@ -98,8 +90,6 @@ void FPSIRecv::init_lp_low() {
   }
 
   spdlog::debug("recv lp_value_pre_ciphers init done");
-
-  ipcl::terminateContext();
 }
 
 // online phase
@@ -229,14 +219,10 @@ void FPSIRecv::msg_inf_low() {
     // Decryption, and get the number of intersection points
     /*--------------------------------------------------------------------------------------------------------------------------------*/
 
-    ipcl::initializeContext("QAT");
-    ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
     post_process_inf_timer.start();
     ipcl::PlainText plainText = sk.decrypt(ipcl::CipherText(pk, bigNums));
     post_process_inf_timer.end(
         std::format("recv_thread_{}_decrypt", thread_index));
-
-    ipcl::terminateContext();
 
     // Check intersection membership
     vector<u64> plain_nums(res_size, 0);
@@ -441,15 +427,13 @@ void FPSIRecv::msg_lp_low() {
     /*--------------------------------------------------------------------------------------------------------------------------------*/
     // Decrypt and get plaintexts
     /*--------------------------------------------------------------------------------------------------------------------------------*/
-    ipcl::initializeContext("QAT");
-    ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
+
     post_process_lp_timer.start();
 
     // Decrypt
     ipcl::PlainText plainText = sk.decrypt(ipcl::CipherText(pk, bigNums));
     post_process_lp_timer.end(
         std::format("recv_thread_{}_decrypt", thread_index));
-    ipcl::terminateContext();
 
     // Get plaintexts
     vector<u64> plain_nums(res_size, 0);

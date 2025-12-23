@@ -26,9 +26,6 @@
 void FPSIRecvH::get_ID() {
   vector<vector<pair<u64, u64>>> intervals(DIM); // intervals
 
-  ipcl::initializeContext("QAT");
-  ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
-
   // compute zero ciphertexts
   vector<u32> zero_vec(PTS_NUM * DIM, 0);
 
@@ -47,7 +44,6 @@ void FPSIRecvH::get_ID() {
 
   ipcl::PlainText pt_randoms = ipcl::PlainText(random_bns);
   ipcl::CipherText random_ciphers = pk.encrypt(pt_randoms);
-  ipcl::terminateContext();
 
   spdlog::debug("recv getID() random numbers computed");
 
@@ -293,8 +289,6 @@ void FPSIRecvH::init_inf() {
   spdlog::debug("rb_okvs_vec init done");
 
   // zero homo ciphertexts init
-  ipcl::initializeContext("QAT");
-  ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
 
   vector<u32> vec_zero_cipher(omega, 0);
   ipcl::PlainText pt_zero = ipcl::PlainText(vec_zero_cipher);
@@ -316,8 +310,6 @@ void FPSIRecvH::init_inf() {
     }
   }
   spdlog::debug("zero homo ciphertexts precomputation finished");
-
-  ipcl::terminateContext();
 }
 
 /// offline high-dim Lp, multi-thread OKVS
@@ -339,8 +331,6 @@ void FPSIRecvH::init_lp() {
 
   // Homomorphic ciphertext initialization
   // Compute homomorphic ciphertexts for values from 0 to DELTA^p
-  ipcl::initializeContext("QAT");
-  ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
 
   u64 value_length = METRIC + 1;
   vector<u32> num_vec;
@@ -365,8 +355,6 @@ void FPSIRecvH::init_lp() {
   }
 
   spdlog::debug("recv lp_value_pre_ciphers init done");
-
-  ipcl::terminateContext();
 }
 
 // online phase
@@ -492,8 +480,6 @@ void FPSIRecvH::msg_inf() {
     // Decryption, and get the number of intersection points
     /*--------------------------------------------------------------------------------------------------------------------------------*/
 
-    ipcl::initializeContext("QAT");
-    ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
     post_process_inf_timer.start();
     ipcl::PlainText plainText = sk.decrypt(ipcl::CipherText(pk, bigNums));
     post_process_inf_timer.end(
@@ -568,8 +554,6 @@ void FPSIRecvH::msg_inf() {
         intersection_count.fetch_add(1, std::memory_order::relaxed);
       }
     }
-
-    ipcl::terminateContext();
 
     merge_timer(post_process_inf_timer);
   };
@@ -760,8 +744,7 @@ void FPSIRecvH::msg_lp() {
     /*--------------------------------------------------------------------------------------------------------------------------------*/
     // Decrypt and get plaintexts
     /*--------------------------------------------------------------------------------------------------------------------------------*/
-    ipcl::initializeContext("QAT");
-    ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
+
     post_process_lp_timer.start();
     // Decrypt
     ipcl::PlainText u_pt = sk.decrypt(ipcl::CipherText(pk, u_bn));
@@ -769,7 +752,6 @@ void FPSIRecvH::msg_lp() {
     ipcl::PlainText v_pt = sk.decrypt(ipcl::CipherText(pk, v_bn));
     post_process_lp_timer.end(
         std::format("recv_thread_{}_u&v_decrypt", thread_index));
-    ipcl::terminateContext();
 
     PRNG prng(oc::sysRandomSeed());
 

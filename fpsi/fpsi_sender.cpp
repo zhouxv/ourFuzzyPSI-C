@@ -20,8 +20,6 @@ void FPSISender::init() { (METRIC == 0) ? init_inf_low() : init_lp_low(); }
 
 /// offline phase, low dim L_inf
 void FPSISender::init_inf_low() {
-  ipcl::initializeContext("QAT");
-  ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
 
   PRNG prng((block(oc::sysRandomSeed())));
 
@@ -58,8 +56,6 @@ void FPSISender::init_inf_low() {
   random_ciphers = pk.encrypt(pt_randoms);
 
   spdlog::info("Sender finished computing random numbers");
-
-  ipcl::terminateContext();
 }
 
 /// offline phase, low dim lp
@@ -85,9 +81,6 @@ void FPSISender::init_lp_low() {
     // cout << random_sums[i] << " ";
   }
   // cout << endl;
-
-  ipcl::initializeContext("QAT");
-  ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
 
   ipcl::PlainText pt_randoms = ipcl::PlainText(random_bns);
   random_ciphers = pk.encrypt(pt_randoms);
@@ -149,8 +142,6 @@ void FPSISender::init_lp_low() {
   }
 
   spdlog::info("Sender completed if match pre computation.");
-
-  ipcl::terminateContext();
 }
 
 /// online phase
@@ -246,8 +237,7 @@ void FPSISender::msg_inf_low() {
     /*--------------------------------------------------------------------------------------------------------------------------------*/
     // getValue inf
     /*--------------------------------------------------------------------------------------------------------------------------------*/
-    ipcl::initializeContext("QAT");
-    ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
+
     get_value_timer_inf.start();
     // decode + random
     auto results = ipcl::CipherText(pk, decode_ciphers) +
@@ -265,7 +255,6 @@ void FPSISender::msg_inf_low() {
                  thread_index);
 
     merge_timer(get_value_timer_inf);
-    ipcl::terminateContext();
   };
 
   // start get_value_inf threads
@@ -393,8 +382,6 @@ void FPSISender::msg_lp_low() {
     /*--------------------------------------------------------------------------------------------------------------------------------*/
     // getValue Lp
     /*--------------------------------------------------------------------------------------------------------------------------------*/
-    ipcl::initializeContext("QAT");
-    ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
 
     get_value_lp_timer.start();
     auto res = ipcl::CipherText(pk, random_ciphers_copy) +
@@ -421,7 +408,6 @@ void FPSISender::msg_lp_low() {
     spdlog::info("Sender thread_index {} : Ciphertext has been sent",
                  thread_index);
 
-    ipcl::terminateContext();
     merge_timer(get_value_lp_timer);
   };
 

@@ -1,14 +1,14 @@
 #include <cmath>
-#include <ipcl/plaintext.hpp>
-#include <ipcl/utils/context.hpp>
+
 #include <spdlog/spdlog.h>
-#include <vector>
 
 #include <cryptoTools/Common/Defines.h>
 #include <cryptoTools/Common/block.h>
 #include <cryptoTools/Crypto/PRNG.h>
 #include <ipcl/bignum.h>
 #include <ipcl/ciphertext.hpp>
+#include <ipcl/plaintext.hpp>
+#include <ipcl/utils/context.hpp>
 
 #include "config.h"
 #include "fpsi_sender_high.h"
@@ -37,11 +37,8 @@ void FPSISenderH::fuzzy_mapping_offline() {
     masks_1_values[i] = BigNumber(reinterpret_cast<Ipp32u *>(&tmp1), 2);
   }
 
-  ipcl::initializeContext("QAT");
-  ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
   fm_masks_0_ciphers = pk.encrypt(ipcl::PlainText(masks_0_values));
   fm_masks_1_ciphers = pk.encrypt(ipcl::PlainText(masks_1_values));
-  ipcl::terminateContext();
 
   spdlog::debug("sender mask ciphertexts computation completed");
 };
@@ -59,8 +56,6 @@ void FPSISenderH::fuzzy_mapping_offline_fake() {
   prng.get(masks_1_values_u64.data(), mask_size);
 
   //
-  ipcl::initializeContext("QAT");
-  ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
 
   vector<BigNumber> random_cipher_vec_0(mask_size);
   vector<BigNumber> random_cipher_vec_1(mask_size);
@@ -76,8 +71,6 @@ void FPSISenderH::fuzzy_mapping_offline_fake() {
   }
   fm_masks_0_ciphers = ipcl::CipherText(pk, random_cipher_vec_0);
   fm_masks_1_ciphers = ipcl::CipherText(pk, random_cipher_vec_1);
-
-  ipcl::terminateContext();
 
   spdlog::debug("fuzzy_mapping_offline_fake finished");
 }
@@ -222,9 +215,6 @@ void FPSISenderH::init_inf() {
   fuzzy_mapping_offline();
   spdlog::info("Sender fmap offline phase done");
 
-  ipcl::initializeContext("QAT");
-  ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
-
   PRNG prng((block(oc::sysRandomSeed())));
 
   // computes random numbers
@@ -240,8 +230,6 @@ void FPSISenderH::init_inf() {
   random_ciphers = pk.encrypt(randoms_pts);
 
   spdlog::info("Sender finished computing random numbers");
-
-  ipcl::terminateContext();
 }
 
 /// offline phase, high-dim, Lp
@@ -266,9 +254,6 @@ void FPSISenderH::init_lp() {
       random_sums[i] += random_values[i * DIM + j];
     }
   }
-
-  ipcl::initializeContext("QAT");
-  ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
 
   randoms_pts = ipcl::PlainText(random_bns);
   random_ciphers = pk.encrypt(randoms_pts);
@@ -326,8 +311,6 @@ void FPSISenderH::init_lp() {
   }
 
   spdlog::info("Sender if match pre-computation completed");
-
-  ipcl::terminateContext();
 }
 
 /// online phase
@@ -419,8 +402,7 @@ void FPSISenderH::msg_inf() {
     /*--------------------------------------------------------------------------------------------------------------------------------*/
     // getValue inf
     /*--------------------------------------------------------------------------------------------------------------------------------*/
-    ipcl::initializeContext("QAT");
-    ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
+
     get_value_timer_inf.start();
     // decode + random
     auto results = ipcl::CipherText(pk, decode_ciphers) +
@@ -507,7 +489,6 @@ void FPSISenderH::msg_inf() {
                   thread_index);
 
     merge_timer(get_value_timer_inf);
-    ipcl::terminateContext();
   };
 
   // start threads
@@ -652,8 +633,6 @@ void FPSISenderH::msg_lp() {
     /*--------------------------------------------------------------------------------------------------------------------------------*/
     // getValue Lp '
     /*--------------------------------------------------------------------------------------------------------------------------------*/
-    ipcl::initializeContext("QAT");
-    ipcl::setHybridMode(ipcl::HybridMode::OPTIMAL);
 
     get_value_lp_timer.start();
     auto res = ipcl::CipherText(pk, random_ciphers_copy) +
@@ -690,7 +669,6 @@ void FPSISenderH::msg_lp() {
     spdlog::info("Sender thread_index {} : get_value Ciphertext has been sent",
                  thread_index);
 
-    ipcl::terminateContext();
     merge_timer(get_value_lp_timer);
   };
 

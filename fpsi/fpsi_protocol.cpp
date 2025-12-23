@@ -63,9 +63,8 @@ void run_low_dimension(const CLP &cmd) {
   spdlog::info("Both parties point set sampling finished");
 
   // Paillier keys initialization
-  ipcl::initializeContext("QAT");
+
   ipcl::KeyPair paillier_key = ipcl::generateKeypair(2048, true);
-  ipcl::terminateContext();
 
   // if_match DH keys initialization
   PRNG prng(oc::sysRandomSeed());
@@ -181,9 +180,8 @@ void run_high_dimension(const CLP &cmd) {
   spdlog::info("Both parties point set sampling finished");
 
   // Paillier keys initialization
-  ipcl::initializeContext("QAT");
+
   ipcl::KeyPair psi_key = ipcl::generateKeypair(2048, true);
-  ipcl::terminateContext();
 
   // if_match DH keys initialization
   PRNG prng(oc::sysRandomSeed());
@@ -316,10 +314,9 @@ void test_low_dimension(const u64 DIM, const u64 DELTA, const u64 METRIC,
   vector<pt> send_pts(send_size, vector<u64>(DIM, 0));
 
   // Paillier keys initialization
-  ipcl::initializeContext("QAT");
+
   ipcl::KeyPair paillier_key = ipcl::generateKeypair(2048, true);
   ipcl::KeyPair if_match_key = ipcl::generateKeypair(2048, true);
-  ipcl::terminateContext();
 
   // if_match DH keys initialization
   PRNG prng(oc::sysRandomSeed());
@@ -505,10 +502,9 @@ void test_high_dimension(const u64 dim, const u64 DELTA, const u64 METRIC,
   vector<pt> send_pts(send_size, vector<u64>(DIM, 0));
 
   // Paillier keys initialization
-  ipcl::initializeContext("QAT");
+
   ipcl::KeyPair paillier_key = ipcl::generateKeypair(2048, true);
   ipcl::KeyPair if_match_key = ipcl::generateKeypair(2048, true);
-  ipcl::terminateContext();
 
   // if_match DH keys initialization
   PRNG prng(oc::sysRandomSeed());
@@ -701,10 +697,9 @@ std::pair<double, double> test_fmap(const u64 DIM, const u64 DELTA,
   vector<pt> send_pts(send_size, vector<u64>(DIM, 0));
 
   // Paillier keys initialization
-  ipcl::initializeContext("QAT");
+
   ipcl::KeyPair paillier_key = ipcl::generateKeypair(2048, true);
   ipcl::KeyPair if_match_key = ipcl::generateKeypair(2048, true);
-  ipcl::terminateContext();
 
   // if_match DH keys initialization
   PRNG prng(oc::sysRandomSeed());
