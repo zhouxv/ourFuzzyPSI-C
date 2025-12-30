@@ -43,13 +43,6 @@ RUN chmod +x ./*.sh && \
     ./shell_install_all_dependencies.sh
 
 
-COPY ./shell_build_cmd.sh \
-    ./shell_run_bench.sh \
-    ./shell_run_bench_fmap.sh \
-    ./CMakeLists.txt \
-    ./
-
-
 # Copying sourcode files
 COPY ./fpsi/ ./fpsi/
 COPY ./frontend/ ./frontend/
