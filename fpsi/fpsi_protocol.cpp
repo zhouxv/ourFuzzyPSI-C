@@ -303,7 +303,7 @@ void test_low_dimension(const oc::CLP &cmd) {
                         dim, delta, 1 << num, avg_com, avg_online_time)
          << endl;
   } else {
-    cout << std::format("[Low dim]    𝐿{}    {:<5}  {:<5}  {:<5}  "
+    cout << std::format("[Low dim]    𝐿{}    {:^5}  {:^5}  {:^5}  "
                         "{:^10.3f} {:^10.3f}",
                         metric, dim, delta, 1 << num, avg_com, avg_online_time)
          << endl;
