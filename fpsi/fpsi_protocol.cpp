@@ -255,60 +255,68 @@ void run_high_dimension(const CLP &cmd) {
 
 void test_low_dimension(const oc::CLP &cmd) {
   const u64 trait = cmd.getOr("trait", 1);
-  const vector<u64> nums = cmd.getManyOr<u64>("n", {8});
-  const vector<u64> dims = cmd.getManyOr<u64>("d", {2});
-  const vector<u64> metrics = cmd.getManyOr<u64>("m", {0});
-  const vector<u64> deltas = cmd.getManyOr<u64>("delta", {16});
+  const u64 num = cmd.getOr<u64>("n", 8);
+  const u64 dim = cmd.getOr<u64>("d", 2);
+  const u64 metric = cmd.getOr<u64>("m", 0);
+  const u64 delta = cmd.getOr<u64>("delta", 16);
+  const bool fake = cmd.isSet("fake");
 
   const string ip = cmd.getOr<string>("ip", "127.0.0.1");
   const u64 port = cmd.getOr<u64>("port", 1212);
 
-  for (auto num : nums) {           // set size
-    for (auto dim : dims) {         // d
-      for (auto metric : metrics) { // p
-        for (auto del : deltas) {   // delta
-          // auto new_logger = spdlog::basic_logger_mt(
-          //     std::format("logger_{}_2_{}_{}", 1ull << num, metric, del),
-          //     std::format("n-{}_dim-2_m-{}_delta-{}.txt", 1ull << num,
-          //     metric,
-          //                 del),
-          //     true);
-          // spdlog::set_default_logger(new_logger);
+  // auto new_logger = spdlog::basic_logger_mt(
+  //     std::format("logger_{}_2_{}_{}", 1ull << num, metric, del),
+  //     std::format("n-{}_dim-2_m-{}_delta-{}.txt", 1ull << num,
+  //     metric,
+  //                 del),
+  //     true);
+  // spdlog::set_default_logger(new_logger);
 
-          test_low_dimension(dim, del, metric, ip, port, num, num, trait);
-        }
-        std::cout << std::endl;
-      }
-    }
+  spdlog::info("*********************** setting ****************************");
+  spdlog::info("dimension         : {} ", dim);
+  spdlog::info("delta             : {} ", delta);
+  spdlog::info("metric            : l_{} ", metric);
+  spdlog::info("param             : {} ",
+               pairToString(get_omega_params(metric, delta, dim)));
+  spdlog::info("set_size          : {}", 1 << num);
+  spdlog::info("intersection_size : {}", num);
+  spdlog::info("trait             : {}", trait);
+  spdlog::info("fake              : {}", fake);
+
+  vector<double> time_sums(trait, 0.0);
+  vector<double> comm_sums(trait, 0.0);
+
+  for (u64 index = 0; index < trait; index++) {
+    auto tmp = test_low_dimension(dim, delta, metric, ip, port, num, num, fake);
+    time_sums[index] = tmp.first;
+    comm_sums[index] = tmp.second;
+  }
+
+  double avg_online_time =
+      accumulate(time_sums.begin(), time_sums.end(), 0.0) / trait;
+
+  double avg_com = accumulate(comm_sums.begin(), comm_sums.end(), 0.0) / trait;
+
+  if (metric == 0) {
+    cout << std::format("[Low dim]    𝐿∞    {:^5}  {:^5}  {:^5}  "
+                        "{:^10.3f} {:^10.3f}",
+                        dim, delta, 1 << num, avg_com, avg_online_time)
+         << endl;
+  } else {
+    cout << std::format("[Low dim]    𝐿{}    {:<5}  {:<5}  {:<5}  "
+                        "{:^10.3f} {:^10.3f}",
+                        metric, dim, delta, 1 << num, avg_com, avg_online_time)
+         << endl;
   }
 }
 
-void test_low_dimension(const u64 DIM, const u64 DELTA, const u64 METRIC,
-                        string IP, u64 PORT, const u64 logr, const u64 logs,
-                        const u64 trait) {
-
-  const u64 recv_size = 1ull << logr;
-  const u64 send_size = 1ull << logs;
-  const u64 intersection_size = logr;
-
-  if ((intersection_size > recv_size) | (intersection_size > send_size)) {
-    spdlog::error("intersection_size should not be greater than set_size");
-    return;
-  }
-
-  spdlog::info("*********************** setting ****************************");
-  spdlog::info("dimension         : {} ", DIM);
-  spdlog::info("delta             : {}", DELTA);
-  spdlog::info("metric            : l_ {} ", METRIC);
-  spdlog::info("Recv_set_size     : {}", recv_size);
-  spdlog::info("send_set_size     : {}", send_size);
-  spdlog::info("intersection_size : {}", intersection_size);
-  spdlog::info("address           : {}:{}", IP, PORT);
-  spdlog::info("trait             : {}", trait);
-
-  vector<double> time_sums(trait, 0);
-  vector<double> comm_sums(trait, 0.0);
-  u64 pass_count = 0;
+std::pair<double, double> test_low_dimension(const u64 DIM, const u64 DELTA,
+                                             const u64 METRIC, string IP,
+                                             u64 PORT, const u64 LOGR,
+                                             const u64 LOGS, const bool FAKE) {
+  const u64 recv_size = 1ull << LOGR;
+  const u64 send_size = 1ull << LOGS;
+  const u64 intersection_size = LOGR;
 
   vector<pt> recv_pts(recv_size, vector<u64>(DIM, 0));
   vector<pt> send_pts(send_size, vector<u64>(DIM, 0));
@@ -358,145 +366,124 @@ void test_low_dimension(const u64 DIM, const u64 DELTA, const u64 METRIC,
   sender.init();
   spdlog::info("Sender setup done");
 
-  for (u64 i = 0; i < trait; i++) {
+  simpleTimer timer;
 
-    simpleTimer timer;
+  sample_points(DIM, DELTA, send_size, recv_size, intersection_size, send_pts,
+                recv_pts);
+  spdlog::info("Both parties point set sampling finished");
 
-    spdlog::info("This is the {}th test run", i);
+  spdlog::info("----------------------- online start "
+               "------------------------");
 
-    sample_points(DIM, DELTA, send_size, recv_size, intersection_size, send_pts,
-                  recv_pts);
-    spdlog::info("Both parties point set sampling finished");
+  timer.start();
+  // Use std::bind to bind member function and object
+  std::thread recv_msg(std::bind(&FPSIRecv::msg, &recv));
+  std::thread send_msg(std::bind(&FPSISender::msg, &sender));
 
-    spdlog::info("----------------------- online start "
-                 "------------------------");
+  recv_msg.join();
+  send_msg.join();
+  timer.end("protocol_online");
+  spdlog::info("-------------------- output preformance "
+               "---------------------");
 
-    timer.start();
-    // Use std::bind to bind member function and object
-    std::thread recv_msg(std::bind(&FPSIRecv::msg, &recv));
-    std::thread send_msg(std::bind(&FPSISender::msg, &sender));
+  spdlog::info("intersection size : {}", recv.psi_ca_result);
 
-    recv_msg.join();
-    send_msg.join();
-    timer.end("protocol_online");
-    spdlog::info("-------------------- output preformance "
-                 "---------------------");
+  timer.print();
+  spdlog::info("");
+  recv.print_time();
+  spdlog::info("");
+  sender.print_time();
+  spdlog::info("");
+  recv.print_commus();
+  spdlog::info("");
+  sender.print_commus();
 
-    spdlog::info("intersection size : {}", recv.psi_ca_result);
+  auto online_time = timer.get_by_key("protocol_online");
 
-    timer.print();
-    spdlog::info("");
-    recv.print_time();
-    spdlog::info("");
-    sender.print_time();
-    spdlog::info("");
-    recv.print_commus();
-    spdlog::info("");
-    sender.print_commus();
+  auto recv_com = recv.commus;
+  auto sender_com = sender.commus;
 
-    if (recv.psi_ca_result == intersection_size)
-      pass_count += 1;
-
-    auto online_time = timer.get_by_key("protocol_online");
-
-    auto recv_com = recv.commus;
-    auto sender_com = sender.commus;
-
-    double total_com = 0.0;
-    for (auto it = recv_com.begin(); it != recv_com.end(); it++) {
-      total_com += it->second;
-    }
-    for (auto it = sender_com.begin(); it != sender_com.end(); it++) {
-      total_com += it->second;
-    }
-
-    time_sums[i] = online_time;
-    comm_sums[i] = total_com;
-
-    recv.clear();
-    sender.clear();
+  double total_com = 0.0;
+  for (auto it = recv_com.begin(); it != recv_com.end(); it++) {
+    total_com += it->second;
+  }
+  for (auto it = sender_com.begin(); it != sender_com.end(); it++) {
+    total_com += it->second;
   }
 
-  double avg_online_time =
-      accumulate(time_sums.begin(), time_sums.end(), 0.0) / 1000.0 / trait;
-
-  double avg_com = accumulate(comm_sums.begin(), comm_sums.end(), 0.0) / trait;
-
-  if (METRIC == 0) {
-    cout << std::format(
-                "[Low dim]    𝐿∞    {:^5}  {:^5}  {:^5}  {:^10.3f} {:^10.3f}",
-                DIM, DELTA, recv_size, avg_com, avg_online_time)
-         << endl;
-  } else {
-    cout << std::format(
-                "[Low dim]    𝐿{}    {:<5}  {:<5}  {:<5}  {:^10.3f} {:^10.3f}",
-                METRIC, DIM, DELTA, recv_size, avg_com, avg_online_time)
-         << endl;
-  }
-
-  return;
+  return {online_time / 1000.0, total_com};
 }
 
 void test_high_dimension(const oc::CLP &cmd) {
   const u64 trait = cmd.getOr("trait", 1);
-  const vector<u64> dims = cmd.getManyOr<u64>("d", {5});
-  const vector<u64> metrics = cmd.getManyOr<u64>("m", {0});
-  const vector<u64> deltas = cmd.getManyOr<u64>("delta", {16});
-  const vector<u64> nums = cmd.getManyOr<u64>("n", {8});
+  const u64 num = cmd.getOr<u64>("n", 8);
+  const u64 dim = cmd.getOr<u64>("d", 5);
+  const u64 metric = cmd.getOr<u64>("m", 0);
+  const u64 delta = cmd.getOr<u64>("delta", 16);
+  const bool fake = cmd.isSet("fake");
 
   const string ip = cmd.getOr<string>("ip", "127.0.0.1");
   const u64 port = cmd.getOr<u64>("port", 1212);
 
-  for (auto num : nums) {           // set size
-    for (auto dim : dims) {         // d
-      for (auto metric : metrics) { // p
-        for (auto del : deltas) {   // delta
-          // auto new_logger = spdlog::basic_logger_mt(
-          //     std::format("logger_{}_{}_{}_{}", 1ull << num, dim, metric,
-          //     del), std::format("n-{}_dim-{}_m-{}_delta-{}.txt", 1ull << num,
-          //     dim,
-          //                 metric, del),
-          //     true);
-          // spdlog::set_default_logger(new_logger);
+  // auto new_logger = spdlog::basic_logger_mt(
+  //     std::format("logger_{}_{}_{}_{}", 1ull << num, dim, metric,
+  //     del), std::format("n-{}_dim-{}_m-{}_delta-{}.txt", 1ull << num,
+  //     dim,
+  //                 metric, del),
+  //     true);
+  // spdlog::set_default_logger(new_logger);
+  spdlog::info("*********************** setting ****************************");
+  spdlog::info("dimension         : {} ", dim);
+  spdlog::info("delta             : {} ", delta);
+  spdlog::info("metric            : l_{} ", metric);
+  spdlog::info("param             : {} ",
+               pairToString(get_omega_params(metric, delta, dim)));
+  spdlog::info("fm_param          : {}",
+               pairToString(get_fuzzy_mapping_params(metric, delta)));
+  spdlog::info("set_size     : {}", 1 << num);
+  spdlog::info("intersection_size : {}", num);
+  spdlog::info("trait             : {}", trait);
+  spdlog::info("fake              : {}", fake);
 
-          test_high_dimension(dim, del, metric, ip, port, num, num, trait);
-        }
-        std::cout << std::endl;
-      }
-    }
+  vector<double> time_sums(trait, 0.0);
+  vector<double> comm_sums(trait, 0.0);
+
+  for (u64 index = 0; index < trait; index++) {
+    auto tmp =
+        test_high_dimension(dim, delta, metric, ip, port, num, num, fake);
+    time_sums[index] = tmp.first;
+    comm_sums[index] = tmp.second;
+  }
+
+  double avg_online_time =
+      accumulate(time_sums.begin(), time_sums.end(), 0.0) / trait;
+
+  double avg_com = accumulate(comm_sums.begin(), comm_sums.end(), 0.0) / trait;
+
+  if (metric == 0) {
+    cout << std::format("[High dim]    𝐿∞    {:^5}  {:^5}  {:^5}  "
+                        "{:^10.3f} {:^10.3f}",
+                        dim, delta, 1 << num, avg_com, avg_online_time)
+         << endl;
+
+  } else {
+    cout << std::format("[High dim]    𝐿{}    {:^5}  {:^5}  {:^5}  {:^10.3f} "
+                        "{:^10.3f}",
+                        metric, dim, delta, 1 << num, avg_com, avg_online_time)
+         << endl;
   }
 }
 
-void test_high_dimension(const u64 dim, const u64 DELTA, const u64 METRIC,
-                         string IP, u64 PORT, const u64 logr, const u64 logs,
-                         const u64 trait) {
-  const u64 DIM = dim;
-  const u64 recv_size = 1ull << logr;
-  const u64 send_size = 1ull << logs;
-  const u64 intersection_size = logr;
-
-  if ((intersection_size > recv_size) | (intersection_size > send_size)) {
-    spdlog::error("intersection_size should not be greater than set_size");
-    return;
-  }
+std::pair<double, double> test_high_dimension(const u64 DIM, const u64 DELTA,
+                                              const u64 METRIC, string IP,
+                                              u64 PORT, const u64 LOGR,
+                                              const u64 LOGS, const bool FAKE) {
+  const u64 recv_size = 1ull << LOGR;
+  const u64 send_size = 1ull << LOGS;
+  const u64 intersection_size = LOGR;
 
   auto omega = get_omega_params(METRIC, DELTA, DIM);
   auto fm_param = get_fuzzy_mapping_params(METRIC, DELTA);
-
-  spdlog::info("*********************** setting ****************************");
-  spdlog::info("dimension         : {} ", DIM);
-  spdlog::info("delta             : {} ", DELTA);
-  spdlog::info("metric            : l_{} ", METRIC);
-  spdlog::info("param             : {} ", pairToString(omega));
-  spdlog::info("fm_param          : {}", pairToString(fm_param));
-  spdlog::info("Recv_set_size     : {}", recv_size);
-  spdlog::info("send_set_size     : {}", send_size);
-  spdlog::info("intersection_size : {}", intersection_size);
-  spdlog::info("trait             : {}", trait);
-
-  vector<double> time_sums(trait, 0);
-  vector<double> comm_sums(trait, 0.0);
-  u64 pass_count = 0;
 
   vector<pt> recv_pts(recv_size, vector<u64>(DIM, 0));
   vector<pt> send_pts(send_size, vector<u64>(DIM, 0));
@@ -532,152 +519,115 @@ void test_high_dimension(const u64 dim, const u64 DELTA, const u64 METRIC,
   sender_socks.join();
   spdlog::info("Network communication initialization");
 
-  for (u64 i = 0; i < trait; i++) {
-    // Receiver and sender initialization
-    FPSIRecvH recv(DIM, DELTA, recv_size, METRIC, 1, recv_pts,
-                   paillier_key.pub_key, paillier_key.priv_key, recv_dh_k,
-                   socketPair0);
-    FPSISenderH sender(DIM, DELTA, send_size, METRIC, 1, send_pts,
-                       paillier_key.pub_key, send_dh_k, socketPair1);
+  // Receiver and sender initialization
+  FPSIRecvH recv(DIM, DELTA, recv_size, METRIC, 1, recv_pts,
+                 paillier_key.pub_key, paillier_key.priv_key, recv_dh_k,
+                 socketPair0);
+  FPSISenderH sender(DIM, DELTA, send_size, METRIC, 1, send_pts,
+                     paillier_key.pub_key, send_dh_k, socketPair1);
 
-    spdlog::info("This is the {}th test run", i);
+  sample_points(DIM, DELTA, send_size, recv_size, intersection_size, send_pts,
+                recv_pts);
+  spdlog::info("Both parties point set sampling finished");
 
-    sample_points(DIM, DELTA, send_size, recv_size, intersection_size, send_pts,
-                  recv_pts);
-    spdlog::info("Both parties point set sampling finished");
+  // offline
+  if (FAKE) {
+    recv.init_fake();
+    spdlog::info("Recv offline fake done");
 
-    // offline
+    sender.init_fake();
+    spdlog::info("Sender offline fake done");
+  } else {
     recv.init();
     spdlog::info("Recv setup done");
 
     sender.init();
     spdlog::info("Sender setup done");
-
-    simpleTimer timer;
-
-    spdlog::info("----------------------- online start "
-                 "------------------------");
-
-    timer.start();
-    // Use std::bind to bind member function and object
-    std::thread recv_msg(std::bind(&FPSIRecvH::msg, &recv));
-    std::thread send_msg(std::bind(&FPSISenderH::msg, &sender));
-
-    recv_msg.join();
-    send_msg.join();
-    timer.end("protocol_online");
-    spdlog::info("-------------------- output preformance "
-                 "---------------------");
-
-    spdlog::info("intersection size : {}", recv.psi_ca_result);
-
-    timer.print();
-    spdlog::info("");
-    recv.print_time();
-    spdlog::info("");
-    sender.print_time();
-    spdlog::info("");
-    recv.print_commus();
-    spdlog::info("");
-    sender.print_commus();
-
-    if (recv.psi_ca_result == intersection_size)
-      pass_count += 1;
-
-    auto online_time = timer.get_by_key("protocol_online");
-
-    auto recv_com = recv.commus;
-    auto sender_com = sender.commus;
-
-    double total_com = 0.0;
-    for (auto it = recv_com.begin(); it != recv_com.end(); it++) {
-      total_com += it->second;
-    }
-    for (auto it = sender_com.begin(); it != sender_com.end(); it++) {
-      total_com += it->second;
-    }
-
-    time_sums[i] = online_time;
-    comm_sums[i] = total_com;
-
-    recv.clear();
-    sender.clear();
   }
 
-  double avg_online_time =
-      accumulate(time_sums.begin(), time_sums.end(), 0.0) / 1000.0 / trait;
+  simpleTimer timer;
 
-  double avg_com = accumulate(comm_sums.begin(), comm_sums.end(), 0.0) / trait;
+  spdlog::info("----------------------- online start "
+               "------------------------");
 
-  if (METRIC == 0) {
-    cout << std::format(
-                "[High dim]    𝐿∞    {:^5}  {:^5}  {:^5}  {:^10.3f} {:^10.3f}",
-                DIM, DELTA, recv_size, avg_com, avg_online_time)
-         << endl;
+  timer.start();
+  // Use std::bind to bind member function and object
+  std::thread recv_msg(std::bind(&FPSIRecvH::msg, &recv));
+  std::thread send_msg(std::bind(&FPSISenderH::msg, &sender));
 
-  } else {
-    cout << std::format(
-                "[High dim]    𝐿{}    {:^5}  {:^5}  {:^5}  {:^10.3f} {:^10.3f}",
-                METRIC, DIM, DELTA, recv_size, avg_com, avg_online_time)
-         << endl;
+  recv_msg.join();
+  send_msg.join();
+  timer.end("protocol_online");
+  spdlog::info("-------------------- output preformance "
+               "---------------------");
+
+  spdlog::info("intersection size : {}", recv.psi_ca_result);
+
+  timer.print();
+  spdlog::info("");
+  recv.print_time();
+  spdlog::info("");
+  sender.print_time();
+  spdlog::info("");
+  recv.print_commus();
+  spdlog::info("");
+  sender.print_commus();
+
+  auto online_time = timer.get_by_key("protocol_online");
+
+  auto recv_com = recv.commus;
+  auto sender_com = sender.commus;
+
+  double total_com = 0.0;
+  for (auto it = recv_com.begin(); it != recv_com.end(); it++) {
+    total_com += it->second;
+  }
+  for (auto it = sender_com.begin(); it != sender_com.end(); it++) {
+    total_com += it->second;
   }
 
-  return;
+  return {online_time / 1000.0, total_com};
 }
 
 void test_fmap(const oc::CLP &cmd) {
   const u64 trait = cmd.getOr("trait", 1);
-  const vector<u64> nums = cmd.getManyOr<u64>("n", {8});
-  const vector<u64> dims = cmd.getManyOr<u64>("d", {2});
-  const vector<u64> metrics = cmd.getManyOr<u64>("m", {0});
-  const vector<u64> deltas = cmd.getManyOr<u64>("delta", {16});
-
+  const u64 num = cmd.getOr<u64>("n", 8);
+  const u64 dim = cmd.getOr<u64>("d", 2);
+  const u64 metric = cmd.getOr<u64>("m", 0);
+  const u64 delta = cmd.getOr<u64>("delta", 16);
   const bool fake = cmd.isSet("fake");
 
   const string ip = cmd.getOr<string>("ip", "127.0.0.1");
   const u64 port = cmd.getOr<u64>("port", 1212);
 
-  for (auto num : nums) {           // set size
-    for (auto dim : dims) {         // d
-      for (auto metric : metrics) { // p
-        for (auto del : deltas) {   // delta
+  spdlog::info("*********************** setting ****************************");
+  spdlog::info("dimension         : {} ", dim);
+  spdlog::info("delta             : {} ", delta);
+  spdlog::info("metric            : l_{} ", metric);
+  spdlog::info("param             : {} ",
+               pairToString(get_omega_params(metric, delta, dim)));
+  spdlog::info("fm_param          : {}",
+               pairToString(get_fuzzy_mapping_params(metric, delta)));
+  spdlog::info("set_size          : {}", 1 << num);
+  spdlog::info("intersection_size : {}", num);
+  spdlog::info("fake              : {}", fake);
 
-          spdlog::info(
-              "*********************** setting ****************************");
-          spdlog::info("dimension         : {} ", dim);
-          spdlog::info("delta             : {} ", del);
-          spdlog::info("metric            : l_{} ", metric);
-          spdlog::info("param             : {} ",
-                       pairToString(get_omega_params(metric, del, dim)));
-          spdlog::info("fm_param          : {}",
-                       pairToString(get_fuzzy_mapping_params(metric, del)));
-          spdlog::info("set_size          : {}", 1 << num);
-          spdlog::info("intersection_size : {}", num);
-
-          vector<double> time_sums(trait, 0.0);
-          vector<double> comm_sums(trait, 0.0);
-          for (u64 index = 0; index < trait; index++) {
-            auto tmp =
-                test_fmap(dim, del, metric, ip, port, num, num, fake, index);
-            time_sums[index] = tmp.first;
-            comm_sums[index] = tmp.second;
-          }
-
-          double avg_online_time =
-              accumulate(time_sums.begin(), time_sums.end(), 0.0) / trait;
-
-          double avg_com =
-              accumulate(comm_sums.begin(), comm_sums.end(), 0.0) / trait;
-
-          cout << std::format(
-                      "[Fmap]  {:^5}  {:^5}  {:^5}  {:^10.3f} {:^10.3f}", dim,
-                      del, 1 << num, avg_com, avg_online_time)
-               << endl;
-        }
-        std::cout << std::endl;
-      }
-    }
+  vector<double> time_sums(trait, 0.0);
+  vector<double> comm_sums(trait, 0.0);
+  for (u64 index = 0; index < trait; index++) {
+    auto tmp = test_fmap(dim, delta, metric, ip, port, num, num, fake, index);
+    time_sums[index] = tmp.first;
+    comm_sums[index] = tmp.second;
   }
+
+  double avg_online_time =
+      accumulate(time_sums.begin(), time_sums.end(), 0.0) / trait;
+
+  double avg_com = accumulate(comm_sums.begin(), comm_sums.end(), 0.0) / trait;
+
+  cout << std::format("[Fmap]  {:^5}  {:^5}  {:^5}  {:^10.3f} {:^10.3f}", dim,
+                      delta, 1 << num, avg_com, avg_online_time)
+       << endl;
 }
 
 std::pair<double, double> test_fmap(const u64 DIM, const u64 DELTA,

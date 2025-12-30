@@ -1,8 +1,11 @@
 ## run docker
 
 ```bash
-sudo docker build -t fpsi_artifact .
-sudo docker run -dit --name fpsi_artifact --cap-add=NET_ADMIN fpsi_artifact:latest
+sudo docker build -t fpsi_prefix .
+docker tag fpsi_prefix:latest blueobsidian/fpsi_prefix:latest
+docker push blueobsidian/fpsi_prefix:latest
+
+sudo docker run -dit --name fpsi_prefix --cap-add=NET_ADMIN fpsi_prefix:latest
 ```
 
 ```
