@@ -331,6 +331,10 @@ std::pair<double, double> test_low_dimension(const u64 DIM, const u64 DELTA,
   DH25519_number recv_dh_k(prng);
   DH25519_number send_dh_k(prng);
 
+  sample_points(DIM, DELTA, send_size, recv_size, intersection_size, send_pts,
+                recv_pts);
+  spdlog::info("Both parties point set sampling finished");
+
   // Network communication initialization
   vector<coproto::Socket> socketPair0, socketPair1;
   auto init_socks = [&](Role role) {
@@ -359,18 +363,24 @@ std::pair<double, double> test_low_dimension(const u64 DIM, const u64 DELTA,
   FPSISender sender(DIM, DELTA, send_size, METRIC, 1, send_pts,
                     paillier_key.pub_key, send_dh_k, socketPair1);
 
-  // offline
-  recv.init();
-  spdlog::info("Recv setup done");
-
-  sender.init();
-  spdlog::info("Sender setup done");
-
   simpleTimer timer;
+  // offline
+  timer.start();
+  if (FAKE) {
+    recv.init_fake();
+    spdlog::info("Recv offline fake done");
 
-  sample_points(DIM, DELTA, send_size, recv_size, intersection_size, send_pts,
-                recv_pts);
-  spdlog::info("Both parties point set sampling finished");
+    sender.init_fake();
+    spdlog::info("Sender offline fake done");
+  } else {
+    recv.init();
+    spdlog::info("Recv setup done");
+
+    sender.init();
+    spdlog::info("Sender setup done");
+  }
+
+  timer.end("protocol_offline");
 
   spdlog::info("----------------------- online start "
                "------------------------");
@@ -383,22 +393,6 @@ std::pair<double, double> test_low_dimension(const u64 DIM, const u64 DELTA,
   recv_msg.join();
   send_msg.join();
   timer.end("protocol_online");
-  spdlog::info("-------------------- output preformance "
-               "---------------------");
-
-  spdlog::info("intersection size : {}", recv.psi_ca_result);
-
-  timer.print();
-  spdlog::info("");
-  recv.print_time();
-  spdlog::info("");
-  sender.print_time();
-  spdlog::info("");
-  recv.print_commus();
-  spdlog::info("");
-  sender.print_commus();
-
-  auto online_time = timer.get_by_key("protocol_online");
 
   auto recv_com = recv.commus;
   auto sender_com = sender.commus;
@@ -410,6 +404,26 @@ std::pair<double, double> test_low_dimension(const u64 DIM, const u64 DELTA,
   for (auto it = sender_com.begin(); it != sender_com.end(); it++) {
     total_com += it->second;
   }
+
+  auto offline_time = timer.get_by_key("protocol_offline");
+  auto online_time = timer.get_by_key("protocol_online");
+
+  spdlog::info("-------------------- output preformance "
+               "---------------------");
+  spdlog::info("intersection size : {}", recv.psi_ca_result);
+  spdlog::info("offline time     : {} s", offline_time / 1000.0);
+  spdlog::info("online time      : {} s", online_time / 1000.0);
+  spdlog::info("total communication : {} MB", total_com);
+
+  timer.print();
+  spdlog::info("");
+  recv.print_time();
+  spdlog::info("");
+  sender.print_time();
+  spdlog::info("");
+  recv.print_commus();
+  spdlog::info("");
+  sender.print_commus();
 
   return {online_time / 1000.0, total_com};
 }
@@ -498,6 +512,11 @@ std::pair<double, double> test_high_dimension(const u64 DIM, const u64 DELTA,
   DH25519_number recv_dh_k(prng);
   DH25519_number send_dh_k(prng);
 
+  // Point sets sampling
+  sample_points(DIM, DELTA, send_size, recv_size, intersection_size, send_pts,
+                recv_pts);
+  spdlog::info("Both parties point set sampling finished");
+
   // Network communication initialization
   vector<coproto::Socket> socketPair0, socketPair1;
   auto init_socks = [&](Role role) {
@@ -526,11 +545,9 @@ std::pair<double, double> test_high_dimension(const u64 DIM, const u64 DELTA,
   FPSISenderH sender(DIM, DELTA, send_size, METRIC, 1, send_pts,
                      paillier_key.pub_key, send_dh_k, socketPair1);
 
-  sample_points(DIM, DELTA, send_size, recv_size, intersection_size, send_pts,
-                recv_pts);
-  spdlog::info("Both parties point set sampling finished");
-
+  simpleTimer timer;
   // offline
+  timer.start();
   if (FAKE) {
     recv.init_fake();
     spdlog::info("Recv offline fake done");
@@ -544,8 +561,7 @@ std::pair<double, double> test_high_dimension(const u64 DIM, const u64 DELTA,
     sender.init();
     spdlog::info("Sender setup done");
   }
-
-  simpleTimer timer;
+  timer.end("protocol_offline");
 
   spdlog::info("----------------------- online start "
                "------------------------");
@@ -558,22 +574,6 @@ std::pair<double, double> test_high_dimension(const u64 DIM, const u64 DELTA,
   recv_msg.join();
   send_msg.join();
   timer.end("protocol_online");
-  spdlog::info("-------------------- output preformance "
-               "---------------------");
-
-  spdlog::info("intersection size : {}", recv.psi_ca_result);
-
-  timer.print();
-  spdlog::info("");
-  recv.print_time();
-  spdlog::info("");
-  sender.print_time();
-  spdlog::info("");
-  recv.print_commus();
-  spdlog::info("");
-  sender.print_commus();
-
-  auto online_time = timer.get_by_key("protocol_online");
 
   auto recv_com = recv.commus;
   auto sender_com = sender.commus;
@@ -585,6 +585,26 @@ std::pair<double, double> test_high_dimension(const u64 DIM, const u64 DELTA,
   for (auto it = sender_com.begin(); it != sender_com.end(); it++) {
     total_com += it->second;
   }
+
+  auto online_time = timer.get_by_key("protocol_online");
+  auto offline_time = timer.get_by_key("protocol_offline");
+
+  spdlog::info("-------------------- output preformance "
+               "---------------------");
+  spdlog::info("intersection size : {}", recv.psi_ca_result);
+  spdlog::info("offline time     : {} s", offline_time / 1000.0);
+  spdlog::info("online time      : {} s", online_time / 1000.0);
+  spdlog::info("total communication : {} MB", total_com);
+
+  timer.print();
+  spdlog::info("");
+  recv.print_time();
+  spdlog::info("");
+  sender.print_time();
+  spdlog::info("");
+  recv.print_commus();
+  spdlog::info("");
+  sender.print_commus();
 
   return {online_time / 1000.0, total_com};
 }

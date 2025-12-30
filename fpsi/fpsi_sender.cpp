@@ -15,13 +15,97 @@
 #include "rb_okvs/rb_okvs.h"
 #include "utils/set_dec.h"
 
+void FPSISender::init_fake() {
+  PRNG prng(oc::sysRandomSeed());
+
+  if (METRIC == 0) {
+    // computes random numbers
+    random_sums.resize(PTS_NUM, 0);
+    random_hashes.resize(PTS_NUM);
+    prng.get(random_sums.data(), PTS_NUM);
+    prng.get(random_hashes.data(), PTS_NUM);
+
+    vector<u32> random_cipher_vec_u32(128);
+    vector<BigNumber> random_ciphers_bns(PTS_NUM * DIM);
+    for (u64 i = 0; i < PTS_NUM * DIM; i++) {
+      prng.get(random_cipher_vec_u32.data(), 128);
+      random_ciphers_bns[i] = BigNumber(
+          reinterpret_cast<Ipp32u *>(random_cipher_vec_u32.data()), 128);
+    }
+    random_ciphers = ipcl::CipherText(pk, random_ciphers_bns);
+
+  } else {
+    random_sums.resize(PTS_NUM, 0);
+    prng.get(random_sums.data(), PTS_NUM);
+
+    vector<u32> random_cipher_vec_u32(128);
+    vector<BigNumber> random_ciphers_bns(PTS_NUM * DIM);
+    for (u64 i = 0; i < PTS_NUM * DIM; i++) {
+      prng.get(random_cipher_vec_u32.data(), 128);
+      random_ciphers_bns[i] = BigNumber(
+          reinterpret_cast<Ipp32u *>(random_cipher_vec_u32.data()), 128);
+    }
+    random_ciphers = ipcl::CipherText(pk, random_ciphers_bns);
+
+    // Precompute homomorphic ciphertexts. Note: sender computes more than
+    // receiver determined by the maximum prefix coverage range. vector<u64>
+    // num_vec;
+    vector<BigNumber> ep_bns;
+
+    // find the max value
+    auto max_v = *OMEGA_PARAM.first.rbegin();
+    max_v = fast_pow(2, max_v);
+
+    vector<u32> lp_pre_ciphers_vec_u32(128);
+    vector<BigNumber> lp_pre_ciphers_bns(max_v);
+    for (u64 i = 0; i < max_v; i++) {
+      prng.get(lp_pre_ciphers_vec_u32.data(), 128);
+      lp_pre_ciphers_bns[i] = BigNumber(
+          reinterpret_cast<Ipp32u *>(lp_pre_ciphers_vec_u32.data()), 128);
+    }
+    lp_pre_ciphers = ipcl::CipherText(pk, lp_pre_ciphers_bns);
+
+    // if match pre
+    // zero cipher pre
+    vector<vector<block>> sender_random_prefixes;
+    sender_random_prefixes.reserve(PTS_NUM);
+
+    u64 max_prefix_num(0);
+    // compute prefixs
+    for (auto sum : random_sums) {
+      auto temp_prefixes = get_keys_from_dec(
+          set_dec(sum, sum + (u64)pow(DELTA, METRIC), IF_MATCH_PARAM.first));
+      sender_random_prefixes.push_back(temp_prefixes);
+      if (max_prefix_num < temp_prefixes.size()) {
+        max_prefix_num = temp_prefixes.size();
+      }
+    }
+
+    // compute dh pre
+    sender_random_prefixes_dh.reserve(PTS_NUM);
+
+    for (auto prefixs : sender_random_prefixes) {
+      vector<DH25519_point> vec_point;
+      for (auto prefix : prefixs) {
+        vec_point.push_back(DH25519_point(prng));
+      }
+
+      for (u64 i = 0; i < max_prefix_num - vec_point.size(); i++) {
+        vec_point.push_back(DH25519_point(prng));
+      }
+
+      sender_random_prefixes_dh.push_back(vec_point);
+    }
+  }
+}
+
 /// offline phase
 void FPSISender::init() { (METRIC == 0) ? init_inf_low() : init_lp_low(); }
 
 /// offline phase, low dim L_inf
 void FPSISender::init_inf_low() {
 
-  PRNG prng((block(oc::sysRandomSeed())));
+  PRNG prng(oc::sysRandomSeed());
 
   // computes random numbers
   vector<u64> random_values(PTS_NUM * DIM, 0);

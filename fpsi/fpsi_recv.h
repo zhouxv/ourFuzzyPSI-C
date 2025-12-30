@@ -108,6 +108,7 @@ public:
   void init();
   void init_inf_low();
   void init_lp_low();
+  void init_fake();
 
   /// online
   void msg();

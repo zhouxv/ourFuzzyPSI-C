@@ -97,6 +97,7 @@ public:
   void init();
   void init_inf();
   void init_lp();
+  void init_fake();
 
   /// online
   void msg();

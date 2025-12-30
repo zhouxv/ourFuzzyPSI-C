@@ -268,6 +268,72 @@ void FPSIRecvH::fuzzy_mapping_online() {
   merge_timer(fm_timer);
 }
 
+void FPSIRecvH::init_fake() {
+  fuzzy_mapping_offline_fake();
+  PRNG prng(oc::sysRandomSeed());
+
+  if (METRIC == 0) {
+    auto omega = OMEGA_PARAM.second;
+
+    rb_okvs_vec.resize(OKVS_COUNT);
+    // notes: rbOKVS has no clone function
+    for (u64 i = 0; i < OKVS_COUNT; i++) {
+      rb_okvs_vec[i].init(OKVS_SIZE, OKVS_EPSILON, OKVS_LAMBDA, OKVS_SEED);
+    }
+
+    // zero homo ciphertexts init
+    vector<vector<block>> ct_zero_blocks(
+        omega, vector<block>(PAILLIER_CIPHER_SIZE_IN_BLOCK));
+    for (u64 j = 0; j < omega; j++) {
+      prng.get(ct_zero_blocks[j].data(), PAILLIER_CIPHER_SIZE_IN_BLOCK);
+    }
+
+    inf_value_pre_ciphers.resize(OKVS_COUNT);
+    for (u64 i = 0; i < OKVS_COUNT; i++) {
+      inf_value_pre_ciphers[i].reserve(OKVS_SIZE);
+      for (u64 j = 0; j < PTS_NUM; j++) {
+        for (u64 k = 0; k < omega; k++) {
+          inf_value_pre_ciphers[i].push_back(ct_zero_blocks[k]);
+        }
+      }
+    }
+  } else {
+    auto omega = OMEGA_PARAM.second;
+
+    // OKVS init
+    rb_okvs_vec.resize(OKVS_COUNT);
+
+    for (u64 i = 0; i < OKVS_COUNT; i++) {
+      rb_okvs_vec[i].init(OKVS_SIZE, OKVS_EPSILON, OKVS_LAMBDA, OKVS_SEED);
+    }
+
+    // Homomorphic ciphertext initialization
+    // Compute homomorphic ciphertexts for values from 0 to DELTA^p
+
+    u64 value_length = METRIC + 1;
+    vector<u32> num_vec;
+    num_vec.resize((DELTA + 1) * value_length);
+    for (u64 i = 0; i <= DELTA; i++) {
+      for (u64 j = 0; j < value_length; j++) {
+        if (j < value_length - 1) {
+          num_vec[value_length * i + j] = fast_pow(i, j + 1);
+        } else {
+          num_vec[value_length * i + j] = 0;
+        }
+      }
+    }
+
+    ipcl::PlainText pt_num = ipcl::PlainText(num_vec);
+    ipcl::CipherText ct_num = pk.encrypt(pt_num);
+
+    lp_value_pre_ciphers.reserve(DELTA + 1);
+    for (u64 i = 0; i <= DELTA; i++) {
+      auto bns = ct_num.getChunk(i * value_length, value_length);
+      lp_value_pre_ciphers.push_back(bignumers_to_block_vector(bns));
+    }
+  }
+}
+
 /// offline
 void FPSIRecvH::init() { (METRIC == 0) ? init_inf() : init_lp(); }
 

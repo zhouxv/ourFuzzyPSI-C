@@ -17,6 +17,64 @@
 #include "rb_okvs/rb_okvs.h"
 #include "utils/set_dec.h"
 
+void FPSIRecv::init_fake() {
+  PRNG prng(oc::sysRandomSeed());
+  auto omega = OMEGA_PARAM.second;
+
+  if (METRIC == 0) {
+    rb_okvs_vec.resize(OKVS_COUNT);
+    // notes: rbOKVS has no clone function
+    for (u64 i = 0; i < OKVS_COUNT; i++) {
+      rb_okvs_vec[i].init(OKVS_SIZE, OKVS_EPSILON, OKVS_LAMBDA, OKVS_SEED);
+    }
+
+    // zero homo ciphertexts init
+    vector<vector<block>> ct_zero_blocks(
+        omega, vector<block>(PAILLIER_CIPHER_SIZE_IN_BLOCK));
+    for (u64 j = 0; j < omega; j++) {
+      prng.get(ct_zero_blocks[j].data(), PAILLIER_CIPHER_SIZE_IN_BLOCK);
+    }
+
+    inf_value_pre_ciphers.resize(OKVS_COUNT);
+    for (u64 i = 0; i < OKVS_COUNT; i++) {
+      inf_value_pre_ciphers[i].reserve(OKVS_SIZE);
+      for (u64 j = 0; j < PTS_NUM * BLK_CELLS; j++) {
+        for (u64 k = 0; k < omega; k++) {
+          inf_value_pre_ciphers[i].push_back(ct_zero_blocks[k]);
+        }
+      }
+    }
+
+  } else {
+    // OKVS init
+    rb_okvs_vec.resize(OKVS_COUNT);
+
+    for (u64 i = 0; i < OKVS_COUNT; i++) {
+      rb_okvs_vec[i].init(OKVS_SIZE, OKVS_EPSILON, OKVS_LAMBDA, OKVS_SEED);
+    }
+
+    // Homomorphic ciphertext initialization
+    // Compute homomorphic ciphertexts for values from 0 to DELTA^p
+
+    vector<u32> num_vec;
+    num_vec.resize((DELTA + 1) * METRIC);
+    for (u64 i = 0; i <= DELTA; i++) {
+      for (u64 j = 0; j < METRIC; j++) {
+        num_vec[METRIC * i + j] = fast_pow(i, j + 1);
+      }
+    }
+
+    ipcl::PlainText pt_num = ipcl::PlainText(num_vec);
+    ipcl::CipherText ct_num = pk.encrypt(pt_num);
+
+    lp_value_pre_ciphers.reserve(DELTA + 1);
+    for (u64 i = 0; i <= DELTA; i++) {
+      auto bns = ct_num.getChunk(i * METRIC, METRIC);
+      lp_value_pre_ciphers.push_back(bignumers_to_block_vector(bns));
+    }
+  }
+}
+
 /// offline
 void FPSIRecv::init() { (METRIC == 0) ? init_inf_low() : init_lp_low(); }
 
