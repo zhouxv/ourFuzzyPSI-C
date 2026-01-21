@@ -8,8 +8,42 @@
 #include <string>
 
 #include "fpsi_protocol.h"
+#include "utils/set_dec.h"
 
 using namespace osuCrypto;
+
+void test_prefix_param(const oc::CLP &cmd) {
+  const vector<u64> deltas = cmd.getManyOr<u64>("deltas", {30, 60, 1000});
+  const u64 trait_log = cmd.getOr<u64>("i", 24);
+  u64 trait = 1 << trait_log;
+
+  map<u64, PrefixParam> params;
+  params[61] = {{0, 2, 4}, 1};
+  params[121] = {{0, 1, 3, 5}, 1};
+  params[2001] = {{0, 3, 6, 9, 10}, 1};
+
+  std::map<u64, u64> map;
+  PRNG prng(oc::sysRandomSeed());
+
+  for (auto delta : deltas) {
+    for (u64 j = 0; j < trait; j++) {
+
+      u64 val = (prng.get<u64>()) % ((0xffff'ffff'ffff'ffff) - 3 * delta) +
+                1.5 * delta;
+
+      auto param1 = params[2 * delta + 1];
+      auto prefixs1 = set_dec(val - delta, val + delta, param1.first);
+
+      if (map[2 * delta + 1] < prefixs1.size())
+        map[2 * delta + 1] = prefixs1.size();
+    }
+  }
+
+  // 输出map，按照key的大小排序
+  for (const auto &kv : map) {
+    spdlog::info("delta: {}, count: {}", kv.first, kv.second);
+  }
+}
 
 void usage() {
   std::cout << "\nUsage: ./fpsi -p <protocol_type> [options]\n"
@@ -46,6 +80,11 @@ int main(int argc, char **argv) {
     break;
   default:
     spdlog::set_level(spdlog::level::info);
+  }
+
+  if (cmd.isSet("t")) {
+    test_prefix_param(cmd);
+    return 0;
   }
 
   // Select the executed protocol

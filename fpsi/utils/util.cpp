@@ -288,21 +288,8 @@ const PrefixParam get_omega_params(u64 metric, u64 delta, u64 dim) {
     throw invalid_argument("get_omega_params: Invalid metric value.");
   }
 
-  // 向上取整 delta
-  u64 adjusted_delta = delta;
-  if (adjusted_delta < 16) {
-    adjusted_delta = 16; // 最小值设为 16
-  } else if (adjusted_delta <= 32) {
-    adjusted_delta = 32;
-  } else if (adjusted_delta <= 64) {
-    adjusted_delta = 64;
-  } else if (adjusted_delta <= 128) {
-    adjusted_delta = 128;
-  } else {
-    adjusted_delta = 256; // 大于 128 的设为 256
-  }
-
-  auto t = (metric == 0) ? (adjusted_delta * 2 + 1) : (adjusted_delta + 1);
+  // 向上取整 delt
+  auto t = (metric == 0) ? (delta * 2 + 1) : (delta + 1);
 
   PrefixParam param;
   if (dim <= 2) {
@@ -320,21 +307,8 @@ const PrefixParam get_if_match_params(u64 metric, u64 delta) {
   }
 
   // 向上取整 delta
-  u64 adjusted_delta = delta;
-  if (adjusted_delta < 16) {
-    adjusted_delta = 16; // 最小值设为 16
-  } else if (adjusted_delta <= 32) {
-    adjusted_delta = 32;
-  } else if (adjusted_delta <= 64) {
-    adjusted_delta = 64;
-  } else if (adjusted_delta <= 128) {
-    adjusted_delta = 128;
-  } else {
-    adjusted_delta = 256; // 大于 128 的设为 256
-  }
 
-  return IfMatchParamTable::getSelectedParam(fast_pow(adjusted_delta, metric) +
-                                             1);
+  return IfMatchParamTable::getSelectedParam(fast_pow(delta, metric) + 1);
 }
 
 const PrefixParam get_fuzzy_mapping_params(u64 metric, u64 delta) {
@@ -343,22 +317,8 @@ const PrefixParam get_fuzzy_mapping_params(u64 metric, u64 delta) {
   }
 
   // 向上取整 delta
-  u64 adjusted_delta = delta;
-  if (adjusted_delta < 16) {
-    adjusted_delta = 16; // 最小值设为 16
-  } else if (adjusted_delta <= 32) {
-    adjusted_delta = 32;
-  } else if (adjusted_delta <= 64) {
-    adjusted_delta = 64;
-  } else if (adjusted_delta <= 128) {
-    adjusted_delta = 128;
-  } else {
-    adjusted_delta = 256; // 大于 128 的设为 256
-  }
 
-  auto t = adjusted_delta * 2 + 1;
-
-  return FuzzyMappingParamTable::getSelectedParam(t);
+  return FuzzyMappingParamTable::getSelectedParam(delta * 2 + 1);
 }
 
 std::vector<block> bignumer_to_block_vector(const BigNumber &bn) {
