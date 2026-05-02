@@ -22,18 +22,6 @@ metrics=(0 1 2)
 log "Running benchmarks for FuzzyPSI protocol..."
 printf "[ProType] [Metric] [Dim] [Delta] [Size] [Com.(MB)] [Time(s)]\n"
 
-
-for m in "${metrics[@]}"; do
-  for n in "${ns[@]}"; do
-    for delta in "${deltas[@]}"; do
-    ./build/main -p 3 -d 2 -n $n -delta $delta -m $m -trait 3 -log 0 -fake
-    done
-  done
-done
-
-echo "#################################################################"
-
-
 for m in "${metrics[@]}"; do
   for dim in "${dims[@]}"; do
     for n in "${ns[@]}"; do

@@ -3,7 +3,7 @@ printf "Running benchmarks for FuzzyPSI protocol...\n"
 printf "[ProType] [Dim] [Delta] [Size] [Com.(MB)] [Time(s)]\n"
 
 ns=(8 12 16)
-dims=(2 6 10 15)
+dims=(2 6 10)
 deltas=(10 60 250)
 
 
