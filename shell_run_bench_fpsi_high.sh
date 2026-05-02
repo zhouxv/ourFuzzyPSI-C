@@ -14,18 +14,18 @@ cleanup() {
 # Register Signal Capture
 trap 'cleanup' INT TERM EXIT
 
-ns=(8 12)
-dims=(6 10 15)
+ns=(8 12 16)
+dims=(6)
 deltas=(10 60 250)
 metrics=(0 1 2)
 
 log "Running benchmarks for FuzzyPSI protocol..."
 printf "[ProType] [Metric] [Dim] [Delta] [Size] [Com.(MB)] [Time(s)]\n"
 
-for m in "${metrics[@]}"; do
+for n in "${ns[@]}"; do
   for dim in "${dims[@]}"; do
-    for n in "${ns[@]}"; do
-      for delta in "${deltas[@]}"; do
+    for delta in "${deltas[@]}"; do
+      for m in "${metrics[@]}"; do
       ./build/main -p 4 -d $dim -n $n -delta $delta -m $m -trait 3 -log 0 -fake
       done
     done

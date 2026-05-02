@@ -1,4 +1,6 @@
 #pragma once
+#define FMT_DEPRECATED_OSTREAM 1
+
 #include <cryptoTools/Crypto/SodiumCurve.h>
 
 using namespace oc;
