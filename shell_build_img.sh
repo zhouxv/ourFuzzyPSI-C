@@ -9,4 +9,4 @@ source ./shell_utils.sh
 # The '.' at the end specifies the build context, which is the current directory.
 
 log "Building Docker image for ourFuzzyPSI-C..."
-docker build -t fpsi_artifact .
+docker build -t fpsi_opprf_exp_8 .
