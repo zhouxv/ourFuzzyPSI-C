@@ -44,7 +44,10 @@ RUN chmod +x ./*.sh && \
 # Copying sourcode files
 COPY ./fpsi/ ./fpsi/
 COPY ./frontend/ ./frontend/
-COPY ./*.sh \
+COPY ./shell_run_bench_fmap.sh \
+    ./shell_run_bench_fpsi_high.sh\
+    ./shell_run_bench_fpsi_low.sh\
+    ./shell_build_cmd.sh\
     ./CMakeLists.txt \
     ./README.md \
     ./

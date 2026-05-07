@@ -15,7 +15,7 @@ cleanup() {
 trap 'cleanup' INT TERM EXIT
 
 ns=(8 12 16)
-dims=(6)
+dims=(6 10 15)
 deltas=(10 60 250)
 metrics=(0 1 2)
 

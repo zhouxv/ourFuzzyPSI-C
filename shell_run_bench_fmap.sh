@@ -10,7 +10,7 @@ deltas=(10 60 250)
 for n in "${ns[@]}"; do
   for dim in "${dims[@]}"; do
     for delta in "${deltas[@]}"; do
-      ./build/main -p 5 -n $n -d $dim -delta $delta -m 0 -log 0 -trait 1 -fake
+      ./build/main -p 5 -n $n -d $dim -delta $delta -m 0 -log 0 -trait 3 -fake
     done
   done
 done
